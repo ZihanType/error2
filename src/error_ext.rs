@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::{convert::Infallible, error::Error};
 
 use crate::{Location, NextError};
 
@@ -35,5 +35,11 @@ pub trait ErrorExt: Error {
         }
 
         stack.into_boxed_slice()
+    }
+}
+
+impl ErrorExt for Infallible {
+    fn entry(&self) -> (Location, NextError<'_>) {
+        match *self {}
     }
 }
