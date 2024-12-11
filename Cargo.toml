@@ -1,0 +1,18 @@
+[package]
+name = "error2"
+description = "A simple error handle library for Rust"
+keywords = ["error", "error handle"]
+version = "0.1.0"
+edition = "2021"
+authors = ["zihan <ZihanType@proton.me>"]
+license = "MIT/Apache-2.0"
+homepage = "https://github.com/ZihanType/error2"
+repository = "https://github.com/ZihanType/error2"
+include = ["src/**/*", "Cargo.toml"]
+readme = "README.md"
+
+[dependencies]
+snafu = { version = "0.8", default-features = false, optional = true }
+
+[features]
+snafu-compat = ["dep:snafu"]
