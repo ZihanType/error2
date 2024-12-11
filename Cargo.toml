@@ -1,7 +1,7 @@
 [package]
 name = "error2"
 description = "A simple error handle library for Rust"
-keywords = ["error", "error handle"]
+keywords = ["error", "library"]
 version = "0.1.0"
 edition = "2021"
 authors = ["zihan <ZihanType@proton.me>"]
