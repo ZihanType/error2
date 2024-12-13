@@ -52,8 +52,8 @@ impl Location {
         }
     }
 
-    #[cfg_attr(docsrs, doc(cfg(feature = "snafu-compat")))]
-    #[cfg(feature = "snafu-compat")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "snafu")))]
+    #[cfg(feature = "snafu")]
     #[inline]
     pub const fn from_snafu(location: snafu::Location) -> Self {
         Self {
@@ -77,8 +77,8 @@ impl<'a> From<&'static panic::Location<'a>> for Location {
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "snafu-compat")))]
-#[cfg(feature = "snafu-compat")]
+#[cfg_attr(docsrs, doc(cfg(feature = "snafu")))]
+#[cfg(feature = "snafu")]
 impl From<snafu::Location> for Location {
     #[inline]
     fn from(location: snafu::Location) -> Self {
@@ -86,16 +86,16 @@ impl From<snafu::Location> for Location {
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "snafu-compat")))]
-#[cfg(feature = "snafu-compat")]
+#[cfg_attr(docsrs, doc(cfg(feature = "snafu")))]
+#[cfg(feature = "snafu")]
 impl From<Location> for snafu::Location {
     fn from(l: Location) -> Self {
         snafu::Location::new(l.file, l.line, l.column)
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "snafu-compat")))]
-#[cfg(feature = "snafu-compat")]
+#[cfg_attr(docsrs, doc(cfg(feature = "snafu")))]
+#[cfg(feature = "snafu")]
 impl snafu::GenerateImplicitData for Location {
     #[track_caller]
     #[inline]

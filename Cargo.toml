@@ -13,6 +13,3 @@ readme = "README.md"
 
 [dependencies]
 snafu = { version = "0.8", default-features = false, optional = true }
-
-[features]
-snafu-compat = ["dep:snafu"]
