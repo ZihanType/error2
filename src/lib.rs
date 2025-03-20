@@ -1,3 +1,4 @@
+#![warn(rust_2024_compatibility)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod error_ext;
