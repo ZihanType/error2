@@ -1,0 +1,22 @@
+[package]
+name = "error2"
+description = "A simple error handle library for Rust"
+keywords = ["error", "library"]
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+include.workspace = true
+
+[dependencies]
+error2-derive = { workspace = true, optional = true }
+snafu = { workspace = true, optional = true }
+
+[features]
+default = ["derive"]
+derive = ["dep:error2-derive"]
+
+[lints]
+workspace = true

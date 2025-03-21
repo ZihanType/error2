@@ -1,13 +1,5 @@
 use std::{fmt, panic};
 
-/// Constructs a [`Location`](crate::Location) that is not affected by `#[track_caller]`.
-#[macro_export]
-macro_rules! location {
-    () => {
-        $crate::Location::new(::core::file!(), ::core::line!(), ::core::column!())
-    };
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Location {
     file: &'static str,
@@ -89,18 +81,8 @@ impl From<snafu::Location> for Location {
 #[cfg_attr(docsrs, doc(cfg(feature = "snafu")))]
 #[cfg(feature = "snafu")]
 impl From<Location> for snafu::Location {
-    fn from(l: Location) -> Self {
-        snafu::Location::new(l.file, l.line, l.column)
-    }
-}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "snafu")))]
-#[cfg(feature = "snafu")]
-impl snafu::GenerateImplicitData for Location {
-    #[track_caller]
-    #[inline]
-    fn generate() -> Self {
-        Self::caller()
+    fn from(location: Location) -> Self {
+        snafu::Location::new(location.file, location.line, location.column)
     }
 }
 

@@ -1,7 +1,8 @@
-[package]
-name = "error2"
-description = "A simple error handle library for Rust"
-keywords = ["error", "library"]
+[workspace]
+resolver = "3"
+members = ["error2", "error2-derive"]
+
+[workspace.package]
 version = "0.2.0"
 edition = "2024"
 authors = ["zihan <ZihanType@proton.me>"]
@@ -9,7 +10,19 @@ license = "MIT/Apache-2.0"
 homepage = "https://github.com/ZihanType/error2"
 repository = "https://github.com/ZihanType/error2"
 include = ["src/**/*", "Cargo.toml"]
-readme = "README.md"
 
-[dependencies]
-snafu = { version = "0.8", default-features = false, optional = true }
+[workspace.dependencies]
+# self
+error2-derive = { version = "0.2.0", path = "./error2-derive", default-features = false }
+error2 = { version = "0.2.0", path = "./error2", default-features = false }
+
+# dependencies
+snafu = { version = "0.8", default-features = false }
+from-attr = { version = "0.1", default-features = false }
+proc-macro2 = { version = "1", default-features = false }
+quote = { version = "1", default-features = false }
+quote-use = { version = "0.8", default-features = false }
+syn = { version = "2", default-features = false }
+
+[workspace.lints.rust]
+rust-2024-compatibility = "warn"

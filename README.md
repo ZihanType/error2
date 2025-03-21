@@ -6,39 +6,39 @@
 `ErrorExt` is a trait that extends the `std::error::Error` trait with additional methods.
 
 It defines two methods:
-- `fn entry(&self) -> (Location, NextError<'_>)`, a required method, the implementer needs to return the location of the current error and the next error.
-- `fn error_stack(&self) -> Box<[Box<str>]>`, a provided method, will return the stack information of the current error.
+- `fn entry(&self) -> (&Locations, NextError<'_>)`, the implementer needs to return the locations of the current error and the next error.
+- `fn locations(&mut self) -> &mut Locations`, the implementer needs to return a mutable reference to the locations of the current error.
 
 ## Example
 
 ```rust
-use error2::{ErrorExt, Location, NextError};
+use error2::{Attach, ErrorExt, Locations};
 use snafu::{ResultExt, Snafu};
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, Snafu, ErrorExt)]
 #[snafu(display("IO error"))]
 pub struct IoError {
     #[snafu(implicit)]
-    location: Location,
+    locations: Locations,
+    #[error2(std)]
     source: std::io::Error,
 }
 
-impl ErrorExt for IoError {
-    fn entry(&self) -> (Location, NextError<'_>) {
-        (self.location, NextError::Std(&self.source))
-    }
+fn read_file() -> Result<Vec<u8>, IoError> {
+    std::fs::read("aaaaa.txt").context(IoSnafu)
 }
 
 fn main() {
-    let result = std::fs::read("aaaaa.txt").context(IoSnafu);
+    let result = read_file().attach();
 
     if let Err(e) = result {
         // Print the error stack
         // [
-        //     "0: IO error, at src/main.rs:19:45",
-        //     "1: No such file or directory (os error 2)",
+        //     "0: IO error, at src/main.rs:18:30",
+        //     "1: IO error, at src/main.rs:14:32",
+        //     "2: No such file or directory (os error 2)",
         // ]
-        println!("{:#?}", e.error_stack());
+        println!("{:#?}", error2::extract_error_stack(&e));
     }
 }
 ```
