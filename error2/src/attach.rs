@@ -6,6 +6,21 @@ pub trait Attach {
     fn attach_location(self, location: Location) -> Self;
 }
 
+impl<E: ErrorExt> Attach for E {
+    #[track_caller]
+    #[inline]
+    fn attach(mut self) -> Self {
+        self.locations().attach();
+        self
+    }
+
+    #[inline]
+    fn attach_location(mut self, location: Location) -> Self {
+        self.locations().attach_location(location);
+        self
+    }
+}
+
 impl<T, E: ErrorExt> Attach for Result<T, E> {
     #[track_caller]
     #[inline]
