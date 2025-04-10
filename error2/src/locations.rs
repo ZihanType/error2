@@ -3,6 +3,7 @@ use std::fmt;
 use crate::Location;
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Locations(Vec<Location>);
 
 impl Locations {

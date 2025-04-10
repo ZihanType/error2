@@ -23,6 +23,10 @@ proc-macro2 = { version = "1", default-features = false }
 quote = { version = "1", default-features = false }
 quote-use = { version = "0.8", default-features = false }
 syn = { version = "2", default-features = false }
+serde = { version = "1", default-features = false }
+serde_json = { version = "1", default-features = false }
+scc = { version = "2", default-features = false }
+append-only-vec = { version = "0.1", default-features = false }
 
 [workspace.lints.rust]
 rust-2024-compatibility = "warn"

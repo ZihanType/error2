@@ -1,8 +1,11 @@
 use std::{fmt, panic};
 
+use crate::FilePath;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Location {
-    file: &'static str,
+    file: FilePath,
     line: u32,
     column: u32,
 }
@@ -10,19 +13,23 @@ pub struct Location {
 impl Location {
     #[doc(hidden)]
     #[inline]
-    pub const fn new(file: &'static str, line: u32, column: u32) -> Self {
-        Self { file, line, column }
+    pub fn new(file: &'static str, line: u32, column: u32) -> Self {
+        Self {
+            file: file.into(),
+            line,
+            column,
+        }
     }
 
     #[track_caller]
     #[inline]
-    pub const fn caller() -> Self {
+    pub fn caller() -> Self {
         Self::from_std(panic::Location::caller())
     }
 
     #[inline]
-    pub const fn file(&self) -> &'static str {
-        self.file
+    pub fn file(&self) -> &'static str {
+        self.file.into()
     }
 
     #[inline]
@@ -36,9 +43,9 @@ impl Location {
     }
 
     #[inline]
-    pub const fn from_std(location: &'static panic::Location<'_>) -> Self {
+    pub fn from_std(location: &'static panic::Location<'_>) -> Self {
         Self {
-            file: location.file(),
+            file: location.file().into(),
             line: location.line(),
             column: location.column(),
         }
@@ -47,9 +54,9 @@ impl Location {
     #[cfg_attr(docsrs, doc(cfg(feature = "snafu")))]
     #[cfg(feature = "snafu")]
     #[inline]
-    pub const fn from_snafu(location: snafu::Location) -> Self {
+    pub fn from_snafu(location: snafu::Location) -> Self {
         Self {
-            file: location.file,
+            file: location.file.into(),
             line: location.line,
             column: location.column,
         }
@@ -82,7 +89,7 @@ impl From<snafu::Location> for Location {
 #[cfg(feature = "snafu")]
 impl From<Location> for snafu::Location {
     fn from(location: Location) -> Self {
-        snafu::Location::new(location.file, location.line, location.column)
+        snafu::Location::new(location.file.into(), location.line, location.column)
     }
 }
 
@@ -131,7 +138,7 @@ mod tests {
     #[track_caller]
     fn location_by_macro() -> Tuple {
         let from_std = Location {
-            file: file!(),
+            file: file!().into(),
             line: line!(),
             column: column!(),
         };
@@ -142,5 +149,41 @@ mod tests {
             from_std,
             from_crate,
         }
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serialize_deserialize_locations() {
+        macro_rules! location {
+            ($file:literal) => {
+                Location {
+                    file: $file.into(),
+                    line: line!(),
+                    column: column!(),
+                }
+            };
+        }
+
+        let origin = vec![
+            location!("你好，世界"),
+            location!("Hello World"),
+            location!("Bonjour le monde"),
+            location!("Hola Mundo"),
+            location!("Hallo Welt"),
+            location!("Ciao Mondo"),
+            location!("Привет мир"),
+            location!("こんにちは世界"),
+            location!("안녕하세요 세계"),
+            location!("مرحبا بالعالم"),
+            location!("שלום עולם"),
+            location!("Γειά σου Κόσμε"),
+        ];
+
+        let deserialized = {
+            let serialized = serde_json::to_vec(&origin).unwrap();
+            serde_json::from_slice::<Vec<Location>>(&serialized).unwrap()
+        };
+
+        assert_eq!(origin, deserialized);
     }
 }

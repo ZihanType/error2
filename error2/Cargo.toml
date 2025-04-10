@@ -11,8 +11,15 @@ repository.workspace = true
 include.workspace = true
 
 [dependencies]
+scc = { workspace = true }
+append-only-vec = { workspace = true }
+
 error2-derive = { workspace = true, optional = true }
 snafu = { workspace = true, optional = true }
+serde = { workspace = true, features = ["std", "derive"], optional = true }
+
+[dev-dependencies]
+serde_json = { workspace = true, features = ["std"] }
 
 [features]
 default = ["derive"]
