@@ -64,6 +64,7 @@ impl Location {
 }
 
 impl fmt::Display for Location {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}:{}", self.file, self.line, self.column)
     }
@@ -88,6 +89,7 @@ impl From<snafu::Location> for Location {
 #[cfg_attr(docsrs, doc(cfg(feature = "snafu")))]
 #[cfg(feature = "snafu")]
 impl From<Location> for snafu::Location {
+    #[inline]
     fn from(location: Location) -> Self {
         snafu::Location::new(location.file.into(), location.line, location.column)
     }

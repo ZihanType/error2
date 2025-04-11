@@ -19,10 +19,12 @@ impl ErrorExt for Infallible {
 }
 
 impl<T: ErrorExt> ErrorExt for Box<T> {
+    #[inline]
     fn entry(&self) -> (&Locations, NextError<'_>) {
         self.as_ref().entry()
     }
 
+    #[inline]
     fn locations(&mut self) -> &mut Locations {
         self.as_mut().locations()
     }

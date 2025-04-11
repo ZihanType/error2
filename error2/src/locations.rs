@@ -42,12 +42,14 @@ impl Locations {
 }
 
 impl fmt::Debug for Locations {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.0, f)
     }
 }
 
 impl From<Locations> for Vec<Location> {
+    #[inline]
     fn from(locations: Locations) -> Self {
         locations.into_inner()
     }

@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, sync::Arc};
+use std::sync::Arc;
 
 use append_only_vec::AppendOnlyVec;
 use scc::HashIndex;
@@ -47,7 +47,8 @@ impl Interner {
         id
     }
 
+    #[inline]
     pub(crate) fn lookup(&self, Id(id): Id) -> &str {
-        self.vec[id as usize].borrow()
+        self.vec[id as usize].as_str()
     }
 }
