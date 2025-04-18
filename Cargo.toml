@@ -3,7 +3,7 @@ resolver = "3"
 members = ["error2", "error2-derive"]
 
 [workspace.package]
-version = "0.4.1"
+version = "0.4.2"
 edition = "2024"
 authors = ["zihan <ZihanType@proton.me>"]
 license = "MIT/Apache-2.0"
@@ -13,8 +13,8 @@ include = ["src/**/*", "Cargo.toml"]
 
 [workspace.dependencies]
 # self
-error2-derive = { version = "0.4.1", path = "./error2-derive", default-features = false }
-error2 = { version = "0.4.1", path = "./error2", default-features = false }
+error2-derive = { version = "0.4.2", path = "./error2-derive", default-features = false }
+error2 = { version = "0.4.2", path = "./error2", default-features = false }
 
 # dependencies
 snafu = { version = "0.8", default-features = false }
