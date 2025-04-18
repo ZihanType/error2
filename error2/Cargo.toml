@@ -17,6 +17,8 @@ append-only-vec = { workspace = true }
 error2-derive = { workspace = true, optional = true }
 snafu = { workspace = true, optional = true }
 serde = { workspace = true, features = ["std", "derive"], optional = true }
+pin-project-lite = { workspace = true, optional = true }
+futures-core = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json = { workspace = true, features = ["std"] }
@@ -24,6 +26,8 @@ serde_json = { workspace = true, features = ["std"] }
 [features]
 default = ["derive"]
 derive = ["dep:error2-derive"]
+future = ["dep:pin-project-lite"]
+stream = ["dep:pin-project-lite", "dep:futures-core"]
 
 [lints]
 workspace = true

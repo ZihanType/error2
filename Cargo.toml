@@ -27,6 +27,8 @@ serde = { version = "1", default-features = false }
 serde_json = { version = "1", default-features = false }
 scc = { version = "2", default-features = false }
 append-only-vec = { version = "0.1", default-features = false }
+pin-project-lite = { version = "0.2", default-features = false }
+futures-core = { version = "0.3", default-features = false }
 
 [workspace.lints.rust]
 rust-2024-compatibility = "warn"
