@@ -1,4 +1,4 @@
-use crate::{ErrorExt, Location};
+use crate::{Error2, Location};
 
 pub trait Attach {
     #[track_caller]
@@ -6,7 +6,7 @@ pub trait Attach {
     fn attach_location(self, location: Location) -> Self;
 }
 
-impl<E: ErrorExt> Attach for E {
+impl<E: Error2> Attach for E {
     #[track_caller]
     #[inline]
     fn attach(mut self) -> Self {
@@ -21,7 +21,7 @@ impl<E: ErrorExt> Attach for E {
     }
 }
 
-impl<T, E: ErrorExt> Attach for Result<T, E> {
+impl<T, E: Error2> Attach for Result<T, E> {
     #[track_caller]
     #[inline]
     fn attach(self) -> Self {

@@ -19,7 +19,7 @@ struct MyVariant {
     fields: Punctuated<Field, Token![,]>,
 }
 
-const MSG: &str = "`ErrorExt` can only be derived for structs and enums with named fields";
+const MSG: &str = "`Error2` can only be derived for structs and enums with named fields";
 
 pub(crate) fn generate(input: DeriveInput) -> syn::Result<TokenStream> {
     let DeriveInput {
@@ -144,18 +144,18 @@ fn generate_struct(
                 (false, None) => quote_use! {
                     # use error2::NextError;
 
-                    (&self.locations, NextError::Ext(&self.source))
+                    (&self.locations, NextError::Err2(&self.source))
                 },
                 (false, Some(convert)) => quote_use! {
                     # use error2::NextError;
 
-                    (&self.locations, NextError::Ext(#convert(&self.source)))
+                    (&self.locations, NextError::Err2(#convert(&self.source)))
                 },
             },
             Ok(None) => quote_use! {
                 # use error2::NextError;
 
-                (&self.locations, NextError::Ext(&self.source))
+                (&self.locations, NextError::Err2(&self.source))
             },
             Err(AttrsValue { value: e, .. }) => return Err(e),
         },
@@ -164,9 +164,9 @@ fn generate_struct(
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let expand = quote_use! {
-        # use error2::{ErrorExt, Locations, NextError};
+        # use error2::{Error2, Locations, NextError};
 
-        impl #impl_generics ErrorExt for #ident #ty_generics #where_clause {
+        impl #impl_generics Error2 for #ident #ty_generics #where_clause {
             fn entry(&self) -> (&Locations, NextError<'_>) {
                 #entry_body
             }
@@ -223,18 +223,18 @@ fn generate_enum(
                     (false, None) => quote_use! {
                         # use error2::NextError;
 
-                        Self::#variant_ident { locations, source, .. } => (locations, NextError::Ext(source)),
+                        Self::#variant_ident { locations, source, .. } => (locations, NextError::Err2(source)),
                     },
                     (false, Some(convert)) => quote_use! {
                         # use error2::NextError;
 
-                        Self::#variant_ident { locations, source, .. } => (locations, NextError::Ext(#convert(source))),
+                        Self::#variant_ident { locations, source, .. } => (locations, NextError::Err2(#convert(source))),
                     },
                 },
                 Ok(None) => quote_use! {
                     # use error2::NextError;
 
-                    Self::#variant_ident { locations, source, .. } => (locations, NextError::Ext(source)),
+                    Self::#variant_ident { locations, source, .. } => (locations, NextError::Err2(source)),
                 },
                 Err(AttrsValue { value: e, .. }) => {
                     errors.push(e);
@@ -261,9 +261,9 @@ fn generate_enum(
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let expand = quote_use! {
-        # use error2::{ErrorExt, Locations, NextError};
+        # use error2::{Error2, Locations, NextError};
 
-        impl #impl_generics ErrorExt for #ident #ty_generics #where_clause {
+        impl #impl_generics Error2 for #ident #ty_generics #where_clause {
             fn entry(&self) -> (&Locations, NextError<'_>) {
                 match self {
                     #(#entry_arms)*

@@ -1,7 +1,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod attach;
-mod error_ext;
+mod error2;
 mod extract;
 mod file_path;
 #[cfg_attr(docsrs, doc(cfg(feature = "future")))]
@@ -20,7 +20,7 @@ mod stream_ext;
 
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
 #[cfg(feature = "derive")]
-pub use error2_derive::ErrorExt;
+pub use error2_derive::Error2;
 
 #[cfg_attr(docsrs, doc(cfg(feature = "future")))]
 #[cfg(feature = "future")]
@@ -30,7 +30,7 @@ pub use self::future_ext::{AttachFuture, FutureExt};
 pub use self::stream_ext::{AttachStream, StreamExt};
 pub use self::{
     attach::Attach,
-    error_ext::ErrorExt,
+    error2::Error2,
     extract::extract_error_stack,
     iterator_ext::{AttachIter, IteratorExt},
     location::Location,

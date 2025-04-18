@@ -1,13 +1,13 @@
-mod error_ext;
+mod error2;
 
 use proc_macro::TokenStream;
 use syn::{DeriveInput, parse_macro_input};
 
-#[proc_macro_derive(ErrorExt, attributes(error2))]
-pub fn error_ext(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(Error2, attributes(error2))]
+pub fn error2(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
-    error_ext::generate(input)
+    error2::generate(input)
         .unwrap_or_else(|e| e.to_compile_error())
         .into()
 }

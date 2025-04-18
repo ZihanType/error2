@@ -3,7 +3,7 @@
 [![Crates.io version](https://img.shields.io/crates/v/error2.svg?style=flat-square)](https://crates.io/crates/error2)
 [![docs.rs docs](https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square)](https://docs.rs/error2)
 
-`ErrorExt` is a trait that extends the `std::error::Error` trait with additional methods.
+`Error2` is a trait that extends the `std::error::Error` trait with additional methods.
 
 It defines two methods:
 - `fn entry(&self) -> (&Locations, NextError<'_>)`, the implementer needs to return the locations of the current error and the next error.
@@ -12,10 +12,10 @@ It defines two methods:
 ## Example
 
 ```rust
-use error2::{Attach, ErrorExt, Locations};
+use error2::{Attach, Error2, Locations};
 use snafu::{ResultExt, Snafu};
 
-#[derive(Debug, Snafu, ErrorExt)]
+#[derive(Debug, Snafu, Error2)]
 #[snafu(display("IO error"))]
 pub struct IoError {
     #[snafu(implicit)]

@@ -1,9 +1,9 @@
 use std::error::Error;
 
-use crate::ErrorExt;
+use crate::Error2;
 
 pub enum NextError<'a> {
-    Ext(&'a dyn ErrorExt),
+    Err2(&'a dyn Error2),
     Std(&'a dyn Error),
     None,
 }

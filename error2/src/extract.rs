@@ -1,7 +1,7 @@
-use crate::{ErrorExt, NextError};
+use crate::{Error2, NextError};
 
-pub fn extract_error_stack(e: &dyn ErrorExt) -> Box<[Box<str>]> {
-    fn extract_single<'a>(stack: &mut Vec<Box<str>>, e: &'a dyn ErrorExt) -> NextError<'a> {
+pub fn extract_error_stack(e: &dyn Error2) -> Box<[Box<str>]> {
+    fn extract_single<'a>(stack: &mut Vec<Box<str>>, e: &'a dyn Error2) -> NextError<'a> {
         let (locations, next_error) = e.entry();
 
         for location in locations.inner().iter().rev() {
@@ -18,7 +18,7 @@ pub fn extract_error_stack(e: &dyn ErrorExt) -> Box<[Box<str>]> {
 
     loop {
         match next {
-            NextError::Ext(e) => {
+            NextError::Err2(e) => {
                 next = extract_single(&mut stack, e);
                 continue;
             }
