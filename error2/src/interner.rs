@@ -16,7 +16,7 @@ pub(crate) struct Interner {
 
 impl Interner {
     pub(crate) fn intern_static(&self, s: &'static str) -> Id {
-        *self.map.entry(SmallString::Borrowed(s)).or_insert_with(|| {
+        *self.map.entry_sync(SmallString::Borrowed(s)).or_insert_with(|| {
             let id = self.vec.len();
             assert!(id <= u32::MAX as usize);
             let id = Id(id as u32);
@@ -29,7 +29,7 @@ impl Interner {
 
     #[allow(dead_code)]
     pub(crate) fn intern_normal(&self, s: &str) -> Id {
-        if let Some(id) = self.map.get(s) {
+        if let Some(id) = self.map.get_sync(s) {
             return *id.get();
         }
 
@@ -41,7 +41,7 @@ impl Interner {
 
         self.vec.push(SmallString::Owned(s.clone()));
         self.map
-            .insert(SmallString::Owned(s), id)
+            .insert_sync(SmallString::Owned(s), id)
             .expect("unreachable, if we have a collision, we should have found it before");
 
         id
