@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use heck::ToSnakeCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use quote_use::quote_use;
@@ -128,7 +129,8 @@ fn generate_struct(
 ) -> syn::Result<TokenStream> {
     let TypeAttr {
         display: type_display,
-        vis,
+        context_vis,
+        mod_vis,
     } = type_attr;
 
     let display_tokens = match type_display {
@@ -277,7 +279,7 @@ fn generate_struct(
         &struct_ident,
         quote! { #struct_ident },
         &struct_ident,
-        &vis,
+        &context_vis,
         error_kind,
         no_source_no_backtrace_field_idents,
         no_source_no_backtrace_field_generics,
@@ -317,6 +319,21 @@ fn generate_struct(
         }
     };
 
+    let expand = if let Some(mod_vis) = mod_vis {
+        let mod_name = struct_ident.to_string().to_snake_case();
+        let mod_ident = Ident::new(&mod_name, struct_ident.span());
+
+        quote! {
+            #mod_vis mod #mod_ident {
+                use super::*;
+
+                #expand
+            }
+        }
+    } else {
+        expand
+    };
+
     Ok(expand)
 }
 
@@ -329,7 +346,8 @@ fn generate_enum(
 ) -> syn::Result<TokenStream> {
     let TypeAttr {
         display: type_display,
-        vis,
+        context_vis,
+        mod_vis,
     } = type_attr;
 
     if let TypeDisplayAttr::Enabled { meta_span, .. } = type_display {
@@ -503,7 +521,7 @@ fn generate_enum(
             crate_path,
             &enum_ident,
             &variant_ident,
-            &vis,
+            &context_vis,
             error_kind,
             all_field_idents,
             no_source_no_backtrace_field_idents,
@@ -568,6 +586,21 @@ fn generate_enum(
                 }
             }
         }
+    };
+
+    let expand = if let Some(mod_vis) = mod_vis {
+        let mod_name = enum_ident.to_string().to_snake_case();
+        let mod_ident = Ident::new(&mod_name, enum_ident.span());
+
+        quote! {
+            #mod_vis mod #mod_ident {
+                use super::*;
+
+                #expand
+            }
+        }
+    } else {
+        expand
     };
 
     Ok(expand)
@@ -664,7 +697,7 @@ fn generate_context_def(
     type_ident: &Ident,
     type_path: TokenStream,
     context_ident_prefix: &Ident,
-    vis: &Visibility,
+    context_vis: &Visibility,
     error_kind: ErrorKind,
     no_source_no_backtrace_field_idents: Vec<&Ident>,
     no_source_no_backtrace_field_generics: Vec<Ident>,
@@ -682,7 +715,7 @@ fn generate_context_def(
             {
                 #(
                     #[allow(missing_docs)]
-                    #vis #no_source_no_backtrace_field_idents : #no_source_no_backtrace_field_generics,
+                    #context_vis #no_source_no_backtrace_field_idents : #no_source_no_backtrace_field_generics,
                 )*
             }
         }
@@ -770,23 +803,23 @@ fn generate_context_def(
             impl #context_generics #context_ident #context_generics {
                 #[must_use]
                 #[track_caller]
-                #vis fn build #impl_generics (self) -> #type_ident #ty_generics #additional_where_clause {
+                #context_vis fn build #impl_generics (self) -> #type_ident #ty_generics #additional_where_clause {
                     Self::build_with_location(self, Location::caller())
                 }
 
                 #[must_use]
-                #vis fn build_with_location #impl_generics (self, location: Location) -> #type_ident #ty_generics #additional_where_clause {
+                #context_vis fn build_with_location #impl_generics (self, location: Location) -> #type_ident #ty_generics #additional_where_clause {
                     <Self as ErrorWrap < #source_type, #type_ident #ty_generics > >::wrap(self, NoneError, location)
                 }
 
                 #[allow(dead_code)]
                 #[track_caller]
-                #vis fn fail #fail_methods_impl_generics (self) -> Result<__T, #type_ident #ty_generics> #additional_where_clause {
+                #context_vis fn fail #fail_methods_impl_generics (self) -> Result<__T, #type_ident #ty_generics> #additional_where_clause {
                     Result::Err(self.build())
                 }
 
                 #[allow(dead_code)]
-                #vis fn fail_with_location #fail_methods_impl_generics (self, location: Location) -> Result<__T, #type_ident #ty_generics> #additional_where_clause {
+                #context_vis fn fail_with_location #fail_methods_impl_generics (self, location: Location) -> Result<__T, #type_ident #ty_generics> #additional_where_clause {
                     Result::Err(self.build_with_location(location))
                 }
             }
@@ -808,7 +841,7 @@ fn generate_context_def(
         # use #crate_path::{ErrorWrap, Error2, Location};
 
         #[derive(Debug, Copy, Clone)]
-        #vis struct #context_ident #context_generics #context_struct_body
+        #context_vis struct #context_ident #context_generics #context_struct_body
 
         #leaf_error_methods
 

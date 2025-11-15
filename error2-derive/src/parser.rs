@@ -1,18 +1,20 @@
-use syn::{Attribute, LitBool, Meta, Token, Visibility, punctuated::Punctuated, spanned::Spanned};
-
 use crate::{
     messages::{
-        DISABLE_DISPLAY_MUST_ON_TYPE, DISPLAY_MUST_IN_META_LIST, EXPECTED_IDENT, STD_MUST_IN_PATH,
-        VIS_MUST_IN_META_LIST, specified_multiple_times, unknown_double_attr, unknown_single_attr,
+        DISABLE_DISPLAY_MUST_ON_TYPE, DISPLAY_MUST_IN_META_LIST, EXPECTED_IDENT,
+        MODULE_MUST_IN_PATH, STD_MUST_IN_PATH, VIS_MUST_IN_META_LIST, specified_multiple_times,
+        unknown_single_attr,
     },
     types::{FieldAttr, FromStd, TypeAttr, TypeDisplayAttr, VariantAttr, VartiantDisplayAttr},
 };
+use quote::quote;
+use syn::{Attribute, LitBool, Meta, Token, Visibility, punctuated::Punctuated, spanned::Spanned};
 
 pub(crate) fn parse_type_attr(attrs: &[Attribute]) -> syn::Result<TypeAttr> {
     fn inner(
         attr: &Attribute,
         display: &mut TypeDisplayAttr,
         vis: &mut Option<Visibility>,
+        module: &mut bool,
         errors: &mut Vec<syn::Error>,
     ) {
         if !attr.path().is_ident("error2") {
@@ -88,10 +90,31 @@ pub(crate) fn parse_type_attr(attrs: &[Attribute]) -> syn::Result<TypeAttr> {
                         errors.push(e);
                     }
                 }
+            } else if path_ident == "module" {
+                let path = match meta {
+                    Meta::Path(path) => path,
+                    Meta::List(_) | Meta::NameValue(_) => {
+                        errors.push(syn::Error::new(meta.span(), MODULE_MUST_IN_PATH));
+                        continue;
+                    }
+                };
+
+                if *module {
+                    errors.push(syn::Error::new(
+                        path.span(),
+                        specified_multiple_times("module"),
+                    ));
+                    continue;
+                } else {
+                    *module = true;
+                }
             } else {
                 errors.push(syn::Error::new(
                     path_ident.span(),
-                    unknown_double_attr(path_ident, "display", "vis"),
+                    format!(
+                        "unknown attribute `{}`, only `display`, `vis` and `module` are supported",
+                        path_ident
+                    ),
                 ));
             }
         }
@@ -99,12 +122,13 @@ pub(crate) fn parse_type_attr(attrs: &[Attribute]) -> syn::Result<TypeAttr> {
 
     let mut display = TypeDisplayAttr::None;
     let mut vis: Option<Visibility> = None;
+    let mut module = false;
 
     let mut errors = Vec::new();
 
     attrs
         .iter()
-        .for_each(|attr| inner(attr, &mut display, &mut vis, &mut errors));
+        .for_each(|attr| inner(attr, &mut display, &mut vis, &mut module, &mut errors));
 
     if let Some(e) = errors.into_iter().reduce(|mut a, b| {
         a.combine(b);
@@ -113,9 +137,20 @@ pub(crate) fn parse_type_attr(attrs: &[Attribute]) -> syn::Result<TypeAttr> {
         return Err(e);
     }
 
+    let (context_vis, mod_vis) = match (vis, module) {
+        (None, false) => (Visibility::Inherited, None),
+        (None, true) => (
+            syn::parse2::<Visibility>(quote! { pub(super) }).unwrap(),
+            Some(Visibility::Inherited),
+        ),
+        (Some(vis), false) => (vis, None),
+        (Some(vis), true) => (vis.clone(), Some(vis)),
+    };
+
     Ok(TypeAttr {
         display,
-        vis: vis.unwrap_or(Visibility::Inherited),
+        context_vis,
+        mod_vis,
     })
 }
 

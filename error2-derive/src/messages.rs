@@ -22,6 +22,9 @@ pub(crate) const DISABLE_DISPLAY_MUST_ON_TYPE: &str =
 pub(crate) const STD_MUST_IN_PATH: &str =
     "`std` attribute can only appear in path, such as `#[error2(std)]`";
 
+pub(crate) const MODULE_MUST_IN_PATH: &str =
+    "`module` attribute can only appear in path, such as `#[error2(module)]`";
+
 pub(crate) const NO_DISPLAY_ON_STRUCT: &str = "no `display` attribute found on the struct, it must be specified, such as `#[error2(display(\"some message {}\", some_field))]` or `#[error2(display(false))]`";
 
 pub(crate) const DISPLAY_TOKENS_NOT_ON_ENUM: &str =
@@ -35,17 +38,6 @@ pub(crate) fn unknown_single_attr(path_ident: &Ident, attr: &'static str) -> Str
     format!(
         "unknown attribute `{}`, only `{}` is supported",
         path_ident, attr
-    )
-}
-
-pub(crate) fn unknown_double_attr(
-    path_ident: &Ident,
-    attr1: &'static str,
-    attr2: &'static str,
-) -> String {
-    format!(
-        "unknown attribute `{}`, only `{}` and `{}` are supported",
-        path_ident, attr1, attr2
     )
 }
 

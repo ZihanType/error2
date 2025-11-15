@@ -47,7 +47,8 @@ impl VartiantDisplayAttr {
 
 pub(crate) struct TypeAttr {
     pub(crate) display: TypeDisplayAttr,
-    pub(crate) vis: Visibility,
+    pub(crate) context_vis: Visibility,
+    pub(crate) mod_vis: Option<Visibility>,
 }
 
 pub(crate) struct VariantAttr {
