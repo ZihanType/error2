@@ -1,7 +1,6 @@
 use crate::{Error2, Location};
 
 pub trait Attach {
-    #[track_caller]
     fn attach(self) -> Self;
     fn attach_location(self, location: Location) -> Self;
 }
@@ -9,14 +8,13 @@ pub trait Attach {
 impl<E: Error2> Attach for E {
     #[track_caller]
     #[inline]
-    fn attach(mut self) -> Self {
-        self.locations().attach();
-        self
+    fn attach(self) -> Self {
+        self.attach_location(Location::caller())
     }
 
     #[inline]
     fn attach_location(mut self, location: Location) -> Self {
-        self.locations().attach_location(location);
+        self.backtrace_mut().attach_location(location);
         self
     }
 }
@@ -25,13 +23,7 @@ impl<T, E: Error2> Attach for Result<T, E> {
     #[track_caller]
     #[inline]
     fn attach(self) -> Self {
-        match self {
-            Ok(t) => Ok(t),
-            Err(mut e) => {
-                e.locations().attach();
-                Err(e)
-            }
-        }
+        self.attach_location(Location::caller())
     }
 
     #[inline]
@@ -39,7 +31,7 @@ impl<T, E: Error2> Attach for Result<T, E> {
         match self {
             Ok(t) => Ok(t),
             Err(mut e) => {
-                e.locations().attach_location(location);
+                e.backtrace_mut().attach_location(location);
                 Err(e)
             }
         }

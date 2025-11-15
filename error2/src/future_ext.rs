@@ -14,10 +14,7 @@ where
     #[track_caller]
     #[inline]
     fn attach(self) -> AttachFuture<Self> {
-        AttachFuture {
-            inner: self,
-            location: Location::caller(),
-        }
+        self.attach_location(Location::caller())
     }
 
     #[inline]

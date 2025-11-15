@@ -1,19 +1,20 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod attach;
+mod backtrace;
+mod boxed;
 mod error2;
+mod error_wrap;
 mod extract;
-mod file_path;
 #[cfg_attr(docsrs, doc(cfg(feature = "future")))]
 #[cfg(feature = "future")]
 mod future_ext;
-mod interner;
 mod iterator_ext;
 mod location;
-mod locations;
 mod macros;
-mod next_error;
-mod small_string;
+mod option_ext;
+mod result_ext;
+mod static_str;
 #[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
 #[cfg(feature = "stream")]
 mod stream_ext;
@@ -25,20 +26,19 @@ pub use error2_derive::Error2;
 #[cfg_attr(docsrs, doc(cfg(feature = "future")))]
 #[cfg(feature = "future")]
 pub use self::future_ext::{AttachFuture, FutureExt};
+pub(crate) use self::static_str::StaticStr;
 #[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
 #[cfg(feature = "stream")]
 pub use self::stream_ext::{AttachStream, StreamExt};
 pub use self::{
     attach::Attach,
+    backtrace::Backtrace,
+    boxed::{BoxedError2, ViaErr2, ViaLeaf, ViaStd},
+    error_wrap::ErrorWrap,
     error2::Error2,
-    extract::extract_error_stack,
+    extract::{extract_error_message, extract_error_stack},
     iterator_ext::{AttachIter, IteratorExt},
     location::Location,
-    locations::Locations,
-    next_error::NextError,
-};
-pub(crate) use self::{
-    file_path::FilePath,
-    interner::{Id, Interner},
-    small_string::SmallString,
+    option_ext::{NoneError, OptionExt},
+    result_ext::ResultExt,
 };

@@ -1,31 +1,31 @@
 use std::{convert::Infallible, error::Error};
 
-use crate::{Locations, NextError};
+use crate::Backtrace;
 
 pub trait Error2: Error {
-    fn entry(&self) -> (&Locations, NextError<'_>);
+    fn backtrace(&self) -> &Backtrace;
 
-    fn locations(&mut self) -> &mut Locations;
+    fn backtrace_mut(&mut self) -> &mut Backtrace;
 }
 
 impl Error2 for Infallible {
-    fn entry(&self) -> (&Locations, NextError<'_>) {
+    fn backtrace(&self) -> &Backtrace {
         match *self {}
     }
 
-    fn locations(&mut self) -> &mut Locations {
+    fn backtrace_mut(&mut self) -> &mut Backtrace {
         match *self {}
     }
 }
 
 impl<T: Error2> Error2 for Box<T> {
     #[inline]
-    fn entry(&self) -> (&Locations, NextError<'_>) {
-        self.as_ref().entry()
+    fn backtrace(&self) -> &Backtrace {
+        self.as_ref().backtrace()
     }
 
     #[inline]
-    fn locations(&mut self) -> &mut Locations {
-        self.as_mut().locations()
+    fn backtrace_mut(&mut self) -> &mut Backtrace {
+        self.as_mut().backtrace_mut()
     }
 }

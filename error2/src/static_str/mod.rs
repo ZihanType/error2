@@ -1,13 +1,16 @@
+mod interner;
+mod small_string;
+
 use std::{fmt, sync::LazyLock};
 
-use crate::{Id, Interner};
+use self::interner::{Id, Interner};
 
 static INTERNER: LazyLock<Interner> = LazyLock::new(Interner::default);
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct FilePath(Id);
+pub(crate) struct StaticStr(Id);
 
-impl fmt::Debug for FilePath {
+impl fmt::Debug for StaticStr {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = INTERNER.lookup(self.0);
@@ -15,7 +18,7 @@ impl fmt::Debug for FilePath {
     }
 }
 
-impl fmt::Display for FilePath {
+impl fmt::Display for StaticStr {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = INTERNER.lookup(self.0);
@@ -23,24 +26,24 @@ impl fmt::Display for FilePath {
     }
 }
 
-impl From<&'static str> for FilePath {
+impl From<&'static str> for StaticStr {
     #[inline]
     fn from(s: &'static str) -> Self {
         let id = INTERNER.intern_static(s);
-        FilePath(id)
+        StaticStr(id)
     }
 }
 
-impl From<FilePath> for &'static str {
+impl From<StaticStr> for &'static str {
     #[inline]
-    fn from(FilePath(id): FilePath) -> Self {
+    fn from(StaticStr(id): StaticStr) -> Self {
         INTERNER.lookup(id)
     }
 }
 
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 #[cfg(feature = "serde")]
-impl serde::Serialize for FilePath {
+impl serde::Serialize for StaticStr {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -53,7 +56,7 @@ impl serde::Serialize for FilePath {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 #[cfg(feature = "serde")]
-impl<'de> serde::Deserialize<'de> for FilePath {
+impl<'de> serde::Deserialize<'de> for StaticStr {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -61,6 +64,6 @@ impl<'de> serde::Deserialize<'de> for FilePath {
     {
         let s: &str = serde::Deserialize::deserialize(deserializer)?;
         let id = INTERNER.intern_normal(s);
-        Ok(FilePath(id))
+        Ok(StaticStr(id))
     }
 }

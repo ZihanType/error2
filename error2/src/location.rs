@@ -1,11 +1,11 @@
 use std::{fmt, panic};
 
-use crate::FilePath;
+use crate::StaticStr;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Location {
-    file: FilePath,
+    file: StaticStr,
     line: u32,
     column: u32,
 }
@@ -43,22 +43,11 @@ impl Location {
     }
 
     #[inline]
-    pub fn from_std(location: &'static panic::Location<'_>) -> Self {
+    pub fn from_std(location: &panic::Location<'static>) -> Self {
         Self {
             file: location.file().into(),
             line: location.line(),
             column: location.column(),
-        }
-    }
-
-    #[cfg_attr(docsrs, doc(cfg(feature = "snafu")))]
-    #[cfg(feature = "snafu")]
-    #[inline]
-    pub fn from_snafu(location: snafu::Location) -> Self {
-        Self {
-            file: location.file.into(),
-            line: location.line,
-            column: location.column,
         }
     }
 }
@@ -70,28 +59,10 @@ impl fmt::Display for Location {
     }
 }
 
-impl<'a> From<&'static panic::Location<'a>> for Location {
+impl<'a> From<&'a panic::Location<'static>> for Location {
     #[inline]
-    fn from(location: &'static panic::Location<'a>) -> Self {
+    fn from(location: &'a panic::Location<'static>) -> Self {
         Self::from_std(location)
-    }
-}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "snafu")))]
-#[cfg(feature = "snafu")]
-impl From<snafu::Location> for Location {
-    #[inline]
-    fn from(location: snafu::Location) -> Self {
-        Self::from_snafu(location)
-    }
-}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "snafu")))]
-#[cfg(feature = "snafu")]
-impl From<Location> for snafu::Location {
-    #[inline]
-    fn from(location: Location) -> Self {
-        snafu::Location::new(location.file.into(), location.line, location.column)
     }
 }
 
@@ -181,10 +152,8 @@ mod tests {
             location!("Γειά σου Κόσμε"),
         ];
 
-        let deserialized = {
-            let serialized = serde_json::to_vec(&origin).unwrap();
-            serde_json::from_slice::<Vec<Location>>(&serialized).unwrap()
-        };
+        let serialized = serde_json::to_vec(&origin).unwrap();
+        let deserialized = serde_json::from_slice::<Vec<Location>>(&serialized).unwrap();
 
         assert_eq!(origin, deserialized);
     }

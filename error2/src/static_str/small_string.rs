@@ -6,7 +6,7 @@ use std::{
 };
 
 #[derive(Debug, Clone, Eq)]
-pub(crate) enum SmallString {
+pub(super) enum SmallString {
     Borrowed(&'static str),
 
     #[allow(dead_code)]
@@ -15,7 +15,7 @@ pub(crate) enum SmallString {
 
 impl SmallString {
     #[inline]
-    pub(crate) fn as_str(&self) -> &str {
+    pub(super) fn as_str(&self) -> &str {
         match self {
             SmallString::Borrowed(s) => s,
             SmallString::Owned(s) => s,

@@ -1,35 +1,64 @@
-use crate::{Error2, NextError};
+use crate::Error2;
 
 pub fn extract_error_stack(e: &dyn Error2) -> Box<[Box<str>]> {
-    fn extract_single<'a>(stack: &mut Vec<Box<str>>, e: &'a dyn Error2) -> NextError<'a> {
-        let (locations, next_error) = e.entry();
+    let backtrace = e.backtrace();
+    let head = backtrace.head();
+    let messages = backtrace.messages();
+    let locations = backtrace.locations();
 
-        for location in locations.inner().iter().rev() {
-            let idx = stack.len();
-            stack.push(format!("{idx}: {e}, at {location}").into_boxed_str());
-        }
+    let mut stack: Vec<Box<str>> = Vec::with_capacity(messages.len());
 
-        next_error
+    if let Some(head) = head {
+        stack.push(format!("{}: {}", head.type_name(), head.display()).into());
     }
 
-    let mut stack = Vec::with_capacity(16);
+    // Iterate messages forward, using peekable() to get the next error's start_index
+    let mut iter = messages.iter().peekable();
 
-    let mut next = extract_single(&mut stack, e);
+    while let Some(message) = iter.next() {
+        let type_name = message.type_name();
+        let display = message.display();
+        let start_index = message.index();
 
-    loop {
-        match next {
-            NextError::Err2(e) => {
-                next = extract_single(&mut stack, e);
-                continue;
-            }
-            NextError::Std(e) => {
-                let idx = stack.len();
-                stack.push(format!("{idx}: {e}").into_boxed_str());
-                break;
-            }
-            NextError::None => break,
+        // Determine the location range for this error
+        // From start_index to the next error's start_index (if it exists)
+        let end_index = iter
+            .peek()
+            .map_or(locations.len(), |next_msg| next_msg.index());
+
+        // Build error message
+        let mut error_msg = format!("{}: {}", type_name, display);
+
+        // Add location information, iterating backwards (later propagated locations shown first)
+        for location in locations[start_index..end_index].iter().rev() {
+            error_msg.push_str("\n    at ");
+            error_msg.push_str(&location.to_string());
         }
+
+        stack.push(error_msg.into());
     }
 
-    stack.into_boxed_slice()
+    // Reverse the order of error messages (later occurred errors shown first)
+    stack.reverse();
+
+    stack.into()
+}
+
+pub fn extract_error_message(e: &dyn Error2) -> Box<str> {
+    let stack = extract_error_stack(e);
+
+    if stack.is_empty() {
+        Box::from("")
+    } else {
+        let mut buf = String::new();
+
+        for msg in stack {
+            buf.push_str(&msg);
+            buf.push('\n');
+        }
+
+        buf.pop(); // Remove last newline
+
+        buf.into()
+    }
 }

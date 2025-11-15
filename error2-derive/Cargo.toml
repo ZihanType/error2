@@ -14,11 +14,10 @@ include.workspace = true
 proc-macro = true
 
 [dependencies]
-from-attr = { workspace = true }
 proc-macro2 = { workspace = true }
 quote = { workspace = true }
 quote-use = { workspace = true }
-syn = { workspace = true }
+syn = { workspace = true, features = ["derive", "parsing", "proc-macro"] }
 
 [lints]
 workspace = true

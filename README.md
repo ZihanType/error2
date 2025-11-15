@@ -5,40 +5,77 @@
 
 `Error2` is a trait that extends the `std::error::Error` trait with additional methods.
 
-It defines two methods:
-- `fn entry(&self) -> (&Locations, NextError<'_>)`, the implementer needs to return the locations of the current error and the next error.
-- `fn locations(&mut self) -> &mut Locations`, the implementer needs to return a mutable reference to the locations of the current error.
+Its definition is:
+
+```rust
+pub trait Error2: Error {
+    fn backtrace(&self) -> &Backtrace;
+    fn backtrace_mut(&mut self) -> &mut Backtrace;
+}
+```
 
 ## Example
 
 ```rust
-use error2::{Attach, Error2, Locations};
-use snafu::{ResultExt, Snafu};
+use std::{error, fmt, io};
 
-#[derive(Debug, Snafu, Error2)]
-#[snafu(display("IO error"))]
-pub struct IoError {
-    #[snafu(implicit)]
-    locations: Locations,
+use error2::{Attach, Backtrace, Error2, ResultExt};
+
+#[derive(Debug, Error2)]
+#[error2(display("IO error"))]
+pub struct IoErrorWrapper {
     #[error2(std)]
-    source: std::io::Error,
+    source: io::Error,
+    backtrace: Backtrace,
 }
 
-fn read_file() -> Result<Vec<u8>, IoError> {
-    std::fs::read("aaaaa.txt").context(IoSnafu)
+#[derive(Debug, Error2)]
+pub enum Error<T, U, S>
+where
+    T: Error2 + 'static,
+    U: fmt::Display + fmt::Debug,
+    S: error::Error + 'static,
+{
+    #[error2(display("IO error"))]
+    IoError {
+        #[error2(std)]
+        source: io::Error,
+        backtrace: Backtrace,
+    },
+
+    #[error2(display("User not found: {username}"))]
+    NotFoundUser {
+        username: String,
+        backtrace: Backtrace,
+    },
+
+    #[error2(display("An error occurred, {some_field}"))]
+    OtherStd {
+        some_field: U,
+        #[error2(std)]
+        source: S,
+        backtrace: Backtrace,
+    },
+
+    #[error2(display("An error occurred, {some_field}"))]
+    OtherErr2 { some_field: U, source: T },
+}
+
+fn read_file() -> Result<Vec<u8>, Error<IoErrorWrapper, i32, io::Error>> {
+    std::fs::read("aaaaa.txt").context(IoError2)
 }
 
 fn main() {
     let result = read_file().attach();
 
     if let Err(e) = result {
-        // Print the error stack
-        // [
-        //     "0: IO error, at src/main.rs:18:30",
-        //     "1: IO error, at src/main.rs:14:32",
-        //     "2: No such file or directory (os error 2)",
-        // ]
-        println!("{:#?}", error2::extract_error_stack(&e));
+        // Print the error message:
+        //
+        // test_error2::Error<test_error2::IoErrorWrapper, i32, std::io::error::Error>: IO error
+        //     at src/main.rs:50:30
+        //     at src/main.rs:46:32
+        // std::io::error::Error: No such file or directory (os error 2)
+        println!("{}", error2::extract_error_message(&e));
     }
 }
 ```

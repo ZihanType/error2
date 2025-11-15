@@ -7,10 +7,7 @@ where
     #[track_caller]
     #[inline]
     fn attach(self) -> AttachIter<Self> {
-        AttachIter {
-            inner: self,
-            location: Location::caller(),
-        }
+        self.attach_location(Location::caller())
     }
 
     #[inline]

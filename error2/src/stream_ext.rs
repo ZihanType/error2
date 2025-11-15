@@ -15,10 +15,7 @@ where
     #[track_caller]
     #[inline]
     fn attach(self) -> AttachStream<Self> {
-        AttachStream {
-            inner: self,
-            location: Location::caller(),
-        }
+        self.attach_location(Location::caller())
     }
 
     #[inline]
