@@ -3,14 +3,14 @@ use syn::{Attribute, Field, Ident, Token, Visibility, punctuated::Punctuated};
 
 #[derive(Clone, Copy)]
 pub(crate) enum ErrorKind {
-    Leaf,
+    Root,
     Std,
     Err2,
 }
 
 impl ErrorKind {
-    pub(crate) fn is_leaf(&self) -> bool {
-        matches!(self, ErrorKind::Leaf)
+    pub(crate) fn is_root(&self) -> bool {
+        matches!(self, ErrorKind::Root)
     }
 }
 

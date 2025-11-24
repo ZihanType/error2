@@ -13,7 +13,7 @@ use crate::{
     messages::{
         AT_LEAST_ONE_FIELD, AT_LEAST_ONE_VARIANT, DISPLAY_SET_TWO_PLACE,
         DISPLAY_TOKENS_NOT_ON_ENUM, NO_DISPLAY_ON_ENUM_OR_VARIANT, NO_DISPLAY_ON_STRUCT,
-        SUPPORTED_TYPES, incorrect_leaf_err2_def, incorrect_leaf_error_def, incorrect_leaf_std_def,
+        SUPPORTED_TYPES, incorrect_err2_def, incorrect_root_def, incorrect_std_def,
     },
     parser::{parse_field_attr, parse_type_attr, parse_variant_attr},
     types::{
@@ -171,16 +171,16 @@ fn generate_struct(
     let backtrace_field_tokens: TokenStream;
 
     match (source_field, backtrace_field) {
-        // leaf error but no backtrace field
+        // root error but no backtrace field
         (None, None) => {
             return Err(syn::Error::new(
                 struct_ident.span(),
-                incorrect_leaf_error_def(ContextRefClass::Struct),
+                incorrect_root_def(ContextRefClass::Struct),
             ));
         }
-        // right leaf error
+        // right root error
         (None, Some(_)) => {
-            error_kind = ErrorKind::Leaf;
+            error_kind = ErrorKind::Root;
             source_type = quote! { #crate_path::NoneError };
             backtrace_field_tokens = quote! {
                 backtrace: #crate_path::Backtrace::new(),
@@ -195,7 +195,7 @@ fn generate_struct(
                 FromStd::Yes { meta_span } => {
                     return Err(syn::Error::new(
                         meta_span,
-                        incorrect_leaf_err2_def(ContextRefClass::Struct),
+                        incorrect_err2_def(ContextRefClass::Struct),
                     ));
                 }
             }
@@ -216,7 +216,7 @@ fn generate_struct(
                 FromStd::No => {
                     return Err(syn::Error::new(
                         source_field.span(),
-                        incorrect_leaf_std_def(ContextRefClass::Struct),
+                        incorrect_std_def(ContextRefClass::Struct),
                     ));
                 }
             }
@@ -244,7 +244,7 @@ fn generate_struct(
         },
     };
 
-    let error_source_body = if error_kind.is_leaf() {
+    let error_source_body = if error_kind.is_root() {
         quote! {
             ::core::option::Option::None
         }
@@ -255,7 +255,7 @@ fn generate_struct(
     };
 
     let backtrace_body = match error_kind {
-        ErrorKind::Leaf | ErrorKind::Std => quote! {
+        ErrorKind::Root | ErrorKind::Std => quote! {
             &self.backtrace
         },
         ErrorKind::Err2 => quote! {
@@ -264,7 +264,7 @@ fn generate_struct(
     };
 
     let backtrace_mut_body = match error_kind {
-        ErrorKind::Leaf | ErrorKind::Std => quote! {
+        ErrorKind::Root | ErrorKind::Std => quote! {
             &mut self.backtrace
         },
         ErrorKind::Err2 => quote! {
@@ -444,17 +444,17 @@ fn generate_enum(
         let backtrace_field_tokens: TokenStream;
 
         match (source_field, backtrace_field) {
-            // leaf error but no backtrace field
+            // root error but no backtrace field
             (None, None) => {
                 errors.push(syn::Error::new(
                     variant_ident.span(),
-                    incorrect_leaf_error_def(ContextRefClass::Variant),
+                    incorrect_root_def(ContextRefClass::Variant),
                 ));
                 continue;
             }
-            // right leaf error
+            // right root error
             (None, Some(_)) => {
-                error_kind = ErrorKind::Leaf;
+                error_kind = ErrorKind::Root;
                 source_type = quote! { #crate_path::NoneError };
                 backtrace_field_tokens = quote! {
                     backtrace: #crate_path::Backtrace::new(),
@@ -469,7 +469,7 @@ fn generate_enum(
                     FromStd::Yes { meta_span } => {
                         errors.push(syn::Error::new(
                             meta_span,
-                            incorrect_leaf_err2_def(ContextRefClass::Variant),
+                            incorrect_err2_def(ContextRefClass::Variant),
                         ));
                         continue;
                     }
@@ -491,7 +491,7 @@ fn generate_enum(
                     FromStd::No => {
                         errors.push(syn::Error::new(
                             source_field.span(),
-                            incorrect_leaf_std_def(ContextRefClass::Variant),
+                            incorrect_std_def(ContextRefClass::Variant),
                         ));
                         continue;
                     }
@@ -646,7 +646,7 @@ fn generate_variant(
         },
     };
 
-    let error_source_arm = if error_kind.is_leaf() {
+    let error_source_arm = if error_kind.is_root() {
         quote! {
             Self::#variant_ident { .. } => ::core::option::Option::None,
         }
@@ -657,7 +657,7 @@ fn generate_variant(
     };
 
     let backtrace_arm = match error_kind {
-        ErrorKind::Leaf | ErrorKind::Std => quote! {
+        ErrorKind::Root | ErrorKind::Std => quote! {
             Self::#variant_ident { backtrace, .. } => backtrace,
         },
         ErrorKind::Err2 => quote! {
@@ -666,7 +666,7 @@ fn generate_variant(
     };
 
     let backtrace_mut_arm = match error_kind {
-        ErrorKind::Leaf | ErrorKind::Std => quote! {
+        ErrorKind::Root | ErrorKind::Std => quote! {
             Self::#variant_ident { backtrace, .. } => backtrace,
         },
         ErrorKind::Err2 => quote! {
@@ -790,7 +790,7 @@ fn generate_context_def(
         }
     };
 
-    let leaf_error_methods = if !error_kind.is_leaf() {
+    let root_error_methods = if !error_kind.is_root() {
         quote! {}
     } else {
         quote_use! {
@@ -826,7 +826,7 @@ fn generate_context_def(
         }
     };
 
-    let source_field = if error_kind.is_leaf() {
+    let source_field = if error_kind.is_root() {
         quote! {}
     } else {
         quote! {
@@ -843,7 +843,7 @@ fn generate_context_def(
         #[derive(Debug, Copy, Clone)]
         #context_vis struct #context_ident #context_generics #context_struct_body
 
-        #leaf_error_methods
+        #root_error_methods
 
         impl #additional_impl_generics ErrorWrap < #source_type, #type_ident #ty_generics > for #context_ident #context_generics #additional_where_clause {
             #[allow(unused_variables)]

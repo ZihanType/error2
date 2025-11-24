@@ -33,7 +33,7 @@ pub use self::stream_ext::{AttachStream, StreamExt};
 pub use self::{
     attach::Attach,
     backtrace::Backtrace,
-    boxed::{BoxedError2, ViaErr2, ViaLeaf, ViaStd},
+    boxed::{BoxedError2, ViaErr2, ViaNone, ViaStd},
     error_wrap::ErrorWrap,
     error2::Error2,
     extract::{extract_error_message, extract_error_stack},

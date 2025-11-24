@@ -45,21 +45,21 @@ pub(crate) fn specified_multiple_times(attr: &'static str) -> String {
     format!("`{}` attribute specified multiple times", attr)
 }
 
-pub(crate) fn incorrect_leaf_error_def(class: ContextRefClass) -> String {
+pub(crate) fn incorrect_root_def(class: ContextRefClass) -> String {
     format!(
-        "this {} has neither source nor backtrace fields, it appears to be a leaf error, but leaf errors must have a `backtrace` field",
+        "this {} has neither source nor backtrace fields, it appears to be a root error, but root errors must have a `backtrace` field",
         class.as_str()
     )
 }
 
-pub(crate) fn incorrect_leaf_std_def(class: ContextRefClass) -> String {
+pub(crate) fn incorrect_std_def(class: ContextRefClass) -> String {
     format!(
         "this {} has both source and backtrace fields, it appears the source field type only implements the `std::error::Error` trait rather than the `Error2` trait, therefore the `#[error2(std)]` attribute must be used",
         class.as_str()
     )
 }
 
-pub(crate) fn incorrect_leaf_err2_def(class: ContextRefClass) -> String {
+pub(crate) fn incorrect_err2_def(class: ContextRefClass) -> String {
     format!(
         "this {} has a source field but no backtrace field, it appears the source field type already implements the `Error2` trait rather than just the `std::error::Error` trait, therefore the `#[error2(std)]` attribute cannot be used",
         class.as_str()
