@@ -57,12 +57,9 @@ impl Error2 for BoxedError2 {
     }
 }
 
-pub struct ViaLeaf<S>(pub S);
+pub struct ViaLeaf<S: Into<String>>(pub S);
 
-impl<S> ViaLeaf<S>
-where
-    S: Into<String>,
-{
+impl<S: Into<String>> ViaLeaf<S> {
     #[track_caller]
     pub fn build(self) -> BoxedError2 {
         self.build_with_location(Location::caller())
