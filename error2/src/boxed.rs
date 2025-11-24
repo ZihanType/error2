@@ -145,8 +145,6 @@ where
     T: Error2 + Send + Sync + 'static,
 {
     fn wrap(self, mut source: T, location: Location) -> BoxedError2 {
-        let source_type_name = any::type_name::<T>();
-
         if (&source as &(dyn Error + Send + Sync)).is::<BoxedError2>() {
             let mut e =
                 <dyn Error + Send + Sync>::downcast::<BoxedError2>(Box::new(source)).unwrap();
@@ -155,9 +153,7 @@ where
             *e
         } else {
             let display = source.to_string();
-
-            let mut backtrace = source.backtrace_mut().take();
-            let _: Option<_> = backtrace.replace_head(source_type_name, display.clone());
+            let backtrace = source.backtrace_mut().take();
 
             let source = Box::new(source);
 

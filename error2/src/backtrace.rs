@@ -112,15 +112,4 @@ impl Backtrace {
             locations: mem::take(&mut self.locations),
         }
     }
-
-    pub(crate) fn replace_head(
-        &mut self,
-        type_name: &'static str,
-        display: String,
-    ) -> Option<Head> {
-        self.head.replace(Head {
-            type_name: type_name.into(),
-            display: display.into(),
-        })
-    }
 }
