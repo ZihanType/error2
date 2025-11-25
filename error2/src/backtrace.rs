@@ -85,7 +85,7 @@ impl Backtrace {
             index: self.locations.len(),
         });
 
-        self.attach_location(location);
+        self.locations.push(location);
     }
 
     pub(crate) const fn head(&self) -> &Option<Head> {

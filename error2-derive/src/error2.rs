@@ -801,23 +801,27 @@ fn generate_context_def(
             # use #crate_path::{ErrorWrap, NoneError, Location};
 
             impl #context_generics #context_ident #context_generics {
+                #[inline]
                 #[must_use]
                 #[track_caller]
                 #context_vis fn build #impl_generics (self) -> #type_ident #ty_generics #additional_where_clause {
                     Self::build_with_location(self, Location::caller())
                 }
 
+                #[inline]
                 #[must_use]
                 #context_vis fn build_with_location #impl_generics (self, location: Location) -> #type_ident #ty_generics #additional_where_clause {
                     <Self as ErrorWrap < #source_type, #type_ident #ty_generics > >::wrap(self, NoneError, location)
                 }
 
-                #[allow(dead_code)]
+                #[inline]
                 #[track_caller]
+                #[allow(dead_code)]
                 #context_vis fn fail #fail_methods_impl_generics (self) -> Result<__T, #type_ident #ty_generics> #additional_where_clause {
-                    Result::Err(self.build())
+                    Self::fail_with_location(self, Location::caller())
                 }
 
+                #[inline]
                 #[allow(dead_code)]
                 #context_vis fn fail_with_location #fail_methods_impl_generics (self, location: Location) -> Result<__T, #type_ident #ty_generics> #additional_where_clause {
                     Result::Err(self.build_with_location(location))
