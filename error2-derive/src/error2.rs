@@ -6,19 +6,19 @@ use quote::{format_ident, quote};
 use quote_use::quote_use;
 use syn::{
     Data, DataEnum, DataStruct, DataUnion, DeriveInput, Field, Fields, FieldsNamed, FieldsUnnamed,
-    Generics, Ident, Token, Variant, Visibility, punctuated::Punctuated, spanned::Spanned,
+    Generics, Ident, Token, Variant, Visibility, punctuated::Punctuated,
 };
 
 use crate::{
     messages::{
         AT_LEAST_ONE_FIELD, AT_LEAST_ONE_VARIANT, DISPLAY_SET_TWO_PLACE,
         DISPLAY_TOKENS_NOT_ON_ENUM, NO_DISPLAY_ON_ENUM_OR_VARIANT, NO_DISPLAY_ON_STRUCT,
-        SUPPORTED_TYPES, incorrect_err2_def, incorrect_root_def, incorrect_std_def,
+        SUPPORTED_TYPES, incorrect_def,
     },
-    parser::{parse_field_attr, parse_type_attr, parse_variant_attr},
+    parser::{parse_type_attr, parse_variant_attr},
     types::{
-        ContextRefClass, ErrorKind, FieldAttr, FromStd, MyVariant, TypeAttr, TypeDisplayAttr,
-        VariantAttr, VartiantDisplayAttr,
+        ContextKind, ErrorKind, MyVariant, TypeAttr, TypeDisplayAttr, VariantAttr,
+        VartiantDisplayAttr,
     },
 };
 
@@ -171,14 +171,14 @@ fn generate_struct(
     let backtrace_field_tokens: TokenStream;
 
     match (source_field, backtrace_field) {
-        // root error but no backtrace field
+        // incorrect definition
         (None, None) => {
             return Err(syn::Error::new(
                 struct_ident.span(),
-                incorrect_root_def(ContextRefClass::Struct),
+                incorrect_def(ContextKind::Struct),
             ));
         }
-        // right root error
+        // root error
         (None, Some(_)) => {
             error_kind = ErrorKind::Root;
             source_type = quote! { #crate_path::NoneError };
@@ -186,20 +186,8 @@ fn generate_struct(
                 backtrace: #crate_path::Backtrace::new(),
             };
         }
-        // error2 error, must not have `#[error2(std)]` attribute
+        // error2 error
         (Some(source_field), None) => {
-            let FieldAttr { from_std } = parse_field_attr(&source_field.attrs)?;
-
-            match from_std {
-                FromStd::No => (),
-                FromStd::Yes { meta_span } => {
-                    return Err(syn::Error::new(
-                        meta_span,
-                        incorrect_err2_def(ContextRefClass::Struct),
-                    ));
-                }
-            }
-
             error_kind = ErrorKind::Err2;
             source_type = {
                 let ty = &source_field.ty;
@@ -207,20 +195,8 @@ fn generate_struct(
             };
             backtrace_field_tokens = quote! {};
         }
-        // std error, must have `#[error2(std)]` attribute
+        // std error
         (Some(source_field), Some(_backtrace_field)) => {
-            let FieldAttr { from_std } = parse_field_attr(&source_field.attrs)?;
-
-            match from_std {
-                FromStd::Yes { .. } => (),
-                FromStd::No => {
-                    return Err(syn::Error::new(
-                        source_field.span(),
-                        incorrect_std_def(ContextRefClass::Struct),
-                    ));
-                }
-            }
-
             error_kind = ErrorKind::Std;
             source_type = {
                 let ty = &source_field.ty;
@@ -445,15 +421,15 @@ fn generate_enum(
         let backtrace_field_tokens: TokenStream;
 
         match (source_field, backtrace_field) {
-            // root error but no backtrace field
+            // incorrect definition
             (None, None) => {
                 errors.push(syn::Error::new(
                     variant_ident.span(),
-                    incorrect_root_def(ContextRefClass::Variant),
+                    incorrect_def(ContextKind::Variant),
                 ));
                 continue;
             }
-            // right root error
+            // root error
             (None, Some(_)) => {
                 error_kind = ErrorKind::Root;
                 source_type = quote! { #crate_path::NoneError };
@@ -461,21 +437,8 @@ fn generate_enum(
                     backtrace: #crate_path::Backtrace::new(),
                 };
             }
-            // error2 error, must not have `#[error2(std)]` attribute
+            // error2 error
             (Some(source_field), None) => {
-                let FieldAttr { from_std } = parse_field_attr(&source_field.attrs)?;
-
-                match from_std {
-                    FromStd::No => (),
-                    FromStd::Yes { meta_span } => {
-                        errors.push(syn::Error::new(
-                            meta_span,
-                            incorrect_err2_def(ContextRefClass::Variant),
-                        ));
-                        continue;
-                    }
-                }
-
                 error_kind = ErrorKind::Err2;
                 source_type = {
                     let ty = &source_field.ty;
@@ -483,21 +446,8 @@ fn generate_enum(
                 };
                 backtrace_field_tokens = quote! {};
             }
-            // std error, must have `#[error2(std)]` attribute
+            // std error
             (Some(source_field), Some(_backtrace_field)) => {
-                let FieldAttr { from_std } = parse_field_attr(&source_field.attrs)?;
-
-                match from_std {
-                    FromStd::Yes { .. } => (),
-                    FromStd::No => {
-                        errors.push(syn::Error::new(
-                            source_field.span(),
-                            incorrect_std_def(ContextRefClass::Variant),
-                        ));
-                        continue;
-                    }
-                }
-
                 error_kind = ErrorKind::Std;
                 source_type = {
                     let ty = &source_field.ty;

@@ -1,6 +1,6 @@
 use syn::Ident;
 
-use crate::types::ContextRefClass;
+use crate::types::ContextKind;
 
 pub(crate) const SUPPORTED_TYPES: &str =
     "`Error2` can only be derived for structs and enums with named fields";
@@ -18,9 +18,6 @@ pub(crate) const VIS_MUST_IN_META_LIST: &str =
 
 pub(crate) const DISABLE_DISPLAY_MUST_ON_TYPE: &str =
     "`#[error2(display(false))]` is not supported on variants, only on structs or enums";
-
-pub(crate) const STD_MUST_IN_PATH: &str =
-    "`std` attribute can only appear in path, such as `#[error2(std)]`";
 
 pub(crate) const MODULE_MUST_IN_PATH: &str =
     "`module` attribute can only appear in path, such as `#[error2(module)]`";
@@ -45,23 +42,9 @@ pub(crate) fn specified_multiple_times(attr: &'static str) -> String {
     format!("`{}` attribute specified multiple times", attr)
 }
 
-pub(crate) fn incorrect_root_def(class: ContextRefClass) -> String {
+pub(crate) fn incorrect_def(kind: ContextKind) -> String {
     format!(
-        "this {} has neither source nor backtrace fields, it appears to be a root error, but root errors must have a `backtrace` field",
-        class.as_str()
-    )
-}
-
-pub(crate) fn incorrect_std_def(class: ContextRefClass) -> String {
-    format!(
-        "this {} has both source and backtrace fields, it appears the source field type only implements the `std::error::Error` trait rather than the `Error2` trait, therefore the `#[error2(std)]` attribute must be used",
-        class.as_str()
-    )
-}
-
-pub(crate) fn incorrect_err2_def(class: ContextRefClass) -> String {
-    format!(
-        "this {} has a source field but no backtrace field, it appears the source field type already implements the `Error2` trait rather than just the `std::error::Error` trait, therefore the `#[error2(std)]` attribute cannot be used",
-        class.as_str()
+        "this {} has neither `source` nor `backtrace` fields. If it's a root error, it must contain a `backtrace` field; if it's from std, it must contain both `source` and `backtrace` fields; if it's from error2, it must contain a `source` field",
+        kind.as_str()
     )
 }

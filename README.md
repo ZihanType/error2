@@ -24,7 +24,6 @@ use error2::{Attach, Backtrace, Error2, ResultExt};
 #[derive(Debug, Error2)]
 #[error2(display("IO error"))]
 pub struct IoErrorWrapper {
-    #[error2(std)]
     source: io::Error,
     backtrace: Backtrace,
 }
@@ -38,7 +37,6 @@ where
 {
     #[error2(display("IO error"))]
     IoError {
-        #[error2(std)]
         source: io::Error,
         backtrace: Backtrace,
     },
@@ -52,7 +50,6 @@ where
     #[error2(display("An error occurred, {some_field}"))]
     OtherStd {
         some_field: U,
-        #[error2(std)]
         source: S,
         backtrace: Backtrace,
     },

@@ -1,13 +1,13 @@
+use quote::quote;
+use syn::{Attribute, LitBool, Meta, Token, Visibility, punctuated::Punctuated, spanned::Spanned};
+
 use crate::{
     messages::{
         DISABLE_DISPLAY_MUST_ON_TYPE, DISPLAY_MUST_IN_META_LIST, EXPECTED_IDENT,
-        MODULE_MUST_IN_PATH, STD_MUST_IN_PATH, VIS_MUST_IN_META_LIST, specified_multiple_times,
-        unknown_single_attr,
+        MODULE_MUST_IN_PATH, VIS_MUST_IN_META_LIST, specified_multiple_times, unknown_single_attr,
     },
-    types::{FieldAttr, FromStd, TypeAttr, TypeDisplayAttr, VariantAttr, VartiantDisplayAttr},
+    types::{TypeAttr, TypeDisplayAttr, VariantAttr, VartiantDisplayAttr},
 };
-use quote::quote;
-use syn::{Attribute, LitBool, Meta, Token, Visibility, punctuated::Punctuated, spanned::Spanned};
 
 pub(crate) fn parse_type_attr(attrs: &[Attribute]) -> syn::Result<TypeAttr> {
     fn inner(
@@ -228,72 +228,4 @@ pub(crate) fn parse_variant_attr(attrs: &[Attribute]) -> syn::Result<VariantAttr
     }
 
     Ok(VariantAttr { display })
-}
-
-pub(crate) fn parse_field_attr(attrs: &[Attribute]) -> syn::Result<FieldAttr> {
-    fn inner(attr: &Attribute, from_std: &mut FromStd, errors: &mut Vec<syn::Error>) {
-        if !attr.path().is_ident("error2") {
-            return;
-        }
-
-        let nested = match attr.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated) {
-            Ok(o) => o,
-            Err(e) => {
-                errors.push(e);
-                return;
-            }
-        };
-
-        for meta in nested {
-            let path = meta.path();
-
-            let Some(path_ident) = path.get_ident() else {
-                errors.push(syn::Error::new(path.span(), EXPECTED_IDENT));
-                continue;
-            };
-
-            if path_ident == "std" {
-                let path = match meta {
-                    Meta::Path(path) => path,
-                    Meta::List(_) | Meta::NameValue(_) => {
-                        errors.push(syn::Error::new(meta.span(), STD_MUST_IN_PATH));
-                        continue;
-                    }
-                };
-
-                if from_std.is_yes() {
-                    errors.push(syn::Error::new(
-                        path.span(),
-                        specified_multiple_times("std"),
-                    ));
-                    continue;
-                } else {
-                    *from_std = FromStd::Yes {
-                        meta_span: path.span(),
-                    };
-                }
-            } else {
-                errors.push(syn::Error::new(
-                    path_ident.span(),
-                    unknown_single_attr(path_ident, "std"),
-                ));
-            }
-        }
-    }
-
-    let mut from_std = FromStd::No;
-    let mut errors = Vec::new();
-
-    attrs
-        .iter()
-        .for_each(|attr| inner(attr, &mut from_std, &mut errors));
-
-    if let Some(e) = errors.into_iter().reduce(|mut a, b| {
-        a.combine(b);
-        a
-    }) {
-        return Err(e);
-    }
-
-    Ok(FieldAttr { from_std })
 }

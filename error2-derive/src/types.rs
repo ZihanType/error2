@@ -55,21 +55,6 @@ pub(crate) struct VariantAttr {
     pub(crate) display: VartiantDisplayAttr,
 }
 
-pub(crate) enum FromStd {
-    No,
-    Yes { meta_span: Span },
-}
-
-impl FromStd {
-    pub(crate) fn is_yes(&self) -> bool {
-        matches!(self, FromStd::Yes { .. })
-    }
-}
-
-pub(crate) struct FieldAttr {
-    pub(crate) from_std: FromStd,
-}
-
 pub(crate) struct MyVariant {
     pub(crate) attrs: Vec<Attribute>,
     pub(crate) ident: Ident,
@@ -77,16 +62,16 @@ pub(crate) struct MyVariant {
 }
 
 #[derive(Clone, Copy)]
-pub(crate) enum ContextRefClass {
+pub(crate) enum ContextKind {
     Struct,
     Variant,
 }
 
-impl ContextRefClass {
+impl ContextKind {
     pub(crate) const fn as_str(&self) -> &'static str {
         match self {
-            ContextRefClass::Struct => "struct",
-            ContextRefClass::Variant => "variant",
+            ContextKind::Struct => "struct",
+            ContextKind::Variant => "variant",
         }
     }
 }
