@@ -2,8 +2,7 @@ use crate::Error2;
 
 pub fn extract_error_stack(e: &dyn Error2) -> Box<[Box<str>]> {
     let backtrace = e.backtrace();
-    let head = backtrace.head();
-    let messages = backtrace.messages();
+    let (head, messages) = backtrace.head_and_messages();
     let locations = backtrace.locations();
 
     let mut stack: Vec<Box<str>> = Vec::with_capacity(messages.len());

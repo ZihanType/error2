@@ -22,29 +22,15 @@ impl Message {
     pub(crate) const fn index(&self) -> usize {
         self.index
     }
-}
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub(crate) struct Head {
-    type_name: StaticStr,
-    display: Box<str>,
-}
-
-impl Head {
-    pub(crate) const fn type_name(&self) -> &StaticStr {
-        &self.type_name
-    }
-
-    pub(crate) const fn display(&self) -> &str {
-        &self.display
+    pub(crate) const fn is_head(&self) -> bool {
+        self.index == usize::MAX
     }
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Backtrace {
-    head: Option<Head>,
     messages: Vec<Message>,
     locations: Vec<Location>,
 }
@@ -59,7 +45,6 @@ impl Backtrace {
     #[doc(hidden)]
     pub fn new() -> Self {
         Self {
-            head: None,
             messages: Vec::new(),
             locations: Vec::new(),
         }
@@ -68,46 +53,61 @@ impl Backtrace {
     #[doc(hidden)]
     pub fn with_head(type_name: &'static str, display: String) -> Self {
         Self {
-            head: Some(Head {
+            messages: vec![Message {
                 type_name: type_name.into(),
                 display: display.into(),
-            }),
-            messages: Vec::new(),
+                index: usize::MAX,
+            }],
             locations: Vec::new(),
         }
     }
 
     #[doc(hidden)]
     pub fn push_error(&mut self, type_name: &'static str, display: String, location: Location) {
+        let index = self.locations.len();
+
         self.messages.push(Message {
             type_name: type_name.into(),
             display: display.into(),
-            index: self.locations.len(),
+            index,
         });
 
-        self.locations.push(location);
+        self.attach_location(location);
     }
 
-    pub(crate) const fn head(&self) -> &Option<Head> {
-        &self.head
-    }
+    pub(crate) const fn head_and_messages(&self) -> (Option<&Message>, &[Message]) {
+        let messages = self.messages.as_slice();
 
-    pub(crate) const fn messages(&self) -> &Vec<Message> {
-        &self.messages
+        match messages {
+            [] => (None, &[]),
+            [first, rest @ ..] if first.is_head() => (Some(first), rest),
+            _ => (None, messages),
+        }
     }
 
     pub(crate) const fn locations(&self) -> &Vec<Location> {
         &self.locations
     }
 
+    const fn has_head(&self) -> bool {
+        matches!(self.messages.as_slice().first(), Some(msg) if msg.is_head())
+    }
+
     #[inline]
     pub(crate) fn attach_location(&mut self, location: Location) {
+        debug_assert!(
+            if self.has_head() {
+                self.messages.len() > 1
+            } else {
+                !self.messages.is_empty()
+            }
+        );
+
         self.locations.push(location);
     }
 
     pub(crate) fn take(&mut self) -> Backtrace {
         Backtrace {
-            head: self.head.take(),
             messages: mem::take(&mut self.messages),
             locations: mem::take(&mut self.locations),
         }
