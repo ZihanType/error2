@@ -239,6 +239,7 @@ fn generate_struct(
         None => quote! {},
         Some(tokens) => quote! {
             #[allow(unused_variables)]
+            #[allow(unused_assignments)]
             let Self { #(#all_field_idents,)* } = self;
             write!(f, #tokens)
         },
@@ -559,6 +560,7 @@ fn generate_enum(
         impl #impl_generics Display for #enum_ident #ty_generics #where_clause {
             fn fmt(&self, f: &mut Formatter<'_>) -> Result {
                 #[allow(unused_variables)]
+                #[allow(unused_assignments)]
                 match self {
                     #(#display_arms)*
                 }
@@ -804,6 +806,7 @@ fn generate_context_def(
                 #[inline]
                 #[must_use]
                 #[track_caller]
+                #[allow(dead_code)]
                 #context_vis fn build #impl_generics (self) -> #type_ident #ty_generics #additional_where_clause {
                     Self::build_with_location(self, Location::caller())
                 }
