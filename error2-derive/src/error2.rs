@@ -286,10 +286,12 @@ fn generate_struct(
         }
 
         impl #impl_generics #crate_path::Error2 for #struct_ident #ty_generics #where_clause {
+            #[inline]
             fn backtrace(&self) -> &#crate_path::Backtrace {
                 #backtrace_body
             }
 
+            #[inline]
             fn backtrace_mut(&mut self) -> &mut #crate_path::Backtrace {
                 #backtrace_mut_body
             }
@@ -526,12 +528,14 @@ fn generate_enum(
         }
 
         impl #impl_generics #crate_path::Error2 for #enum_ident #ty_generics #where_clause {
+            #[inline]
             fn backtrace(&self) -> &#crate_path::Backtrace {
                 match self {
                     #(#backtrace_arms)*
                 }
             }
 
+            #[inline]
             fn backtrace_mut(&mut self) -> &mut #crate_path::Backtrace {
                 match self {
                     #(#backtrace_mut_arms)*
