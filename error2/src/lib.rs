@@ -25,11 +25,11 @@ pub use error2_derive::Error2;
 
 #[cfg_attr(docsrs, doc(cfg(feature = "future")))]
 #[cfg(feature = "future")]
-pub use self::future_ext::{AttachFuture, FutureExt};
+pub use self::future_ext::AttachFuture;
 pub(crate) use self::static_str::StaticStr;
 #[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
 #[cfg(feature = "stream")]
-pub use self::stream_ext::{AttachStream, StreamExt};
+pub use self::stream_ext::AttachStream;
 pub use self::{
     attach::Attach,
     backtrace::Backtrace,
@@ -37,7 +37,7 @@ pub use self::{
     error_wrap::ErrorWrap,
     error2::Error2,
     extract::{extract_error_message, extract_error_stack},
-    iterator_ext::{AttachIter, IteratorExt},
+    iterator_ext::AttachIter,
     location::Location,
     option_ext::{NoneError, OptionExt},
     result_ext::ResultExt,

@@ -1,4 +1,5 @@
 use std::{
+    marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -8,43 +9,38 @@ use pin_project_lite::pin_project;
 
 use crate::{Attach, Location};
 
-pub trait StreamExt: Stream + Sized
+impl<T, W> Attach<AttachStream<Self, W>> for T
 where
-    Self::Item: Attach,
+    T: Stream,
+    T::Item: Attach<W>,
 {
-    #[track_caller]
     #[inline]
-    fn attach(self) -> AttachStream<Self> {
-        self.attach_location(Location::caller())
-    }
-
-    #[inline]
-    fn attach_location(self, location: Location) -> AttachStream<Self> {
+    fn attach_location(self, location: Location) -> AttachStream<Self, W> {
         AttachStream {
             inner: self,
             location,
+            phantom: PhantomData,
         }
     }
 }
 
-impl<T: Stream> StreamExt for T where T::Item: Attach {}
-
 pin_project! {
     #[derive(Debug, Clone, Copy)]
     #[must_use = "streams do nothing unless polled"]
-    pub struct AttachStream<S> {
+    pub struct AttachStream<S, W> {
         #[pin]
         inner: S,
         location: Location,
+        phantom: PhantomData<W>,
     }
 }
 
-impl<S> Stream for AttachStream<S>
+impl<S, W> Stream for AttachStream<S, W>
 where
     S: Stream,
-    S::Item: Attach,
+    S::Item: Attach<W>,
 {
-    type Item = S::Item;
+    type Item = W;
 
     #[inline]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {

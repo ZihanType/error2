@@ -1,4 +1,5 @@
 use std::{
+    marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -7,43 +8,38 @@ use pin_project_lite::pin_project;
 
 use crate::{Attach, Location};
 
-pub trait FutureExt: Future + Sized
+impl<T, W> Attach<AttachFuture<Self, W>> for T
 where
-    Self::Output: Attach,
+    T: Future,
+    T::Output: Attach<W>,
 {
-    #[track_caller]
     #[inline]
-    fn attach(self) -> AttachFuture<Self> {
-        self.attach_location(Location::caller())
-    }
-
-    #[inline]
-    fn attach_location(self, location: Location) -> AttachFuture<Self> {
+    fn attach_location(self, location: Location) -> AttachFuture<Self, W> {
         AttachFuture {
             inner: self,
             location,
+            phantom: PhantomData,
         }
     }
 }
 
-impl<T: Future> FutureExt for T where T::Output: Attach {}
-
 pin_project! {
     #[derive(Debug, Clone, Copy)]
     #[must_use = "futures do nothing unless you `.await` or poll them"]
-    pub struct AttachFuture<F> {
+    pub struct AttachFuture<F, W> {
         #[pin]
         inner: F,
         location: Location,
+        phantom: PhantomData<W>,
     }
 }
 
-impl<F> Future for AttachFuture<F>
+impl<F, W> Future for AttachFuture<F, W>
 where
     F: Future,
-    F::Output: Attach,
+    F::Output: Attach<W>,
 {
-    type Output = F::Output;
+    type Output = W;
 
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

@@ -72,7 +72,7 @@ impl Backtrace {
             index,
         });
 
-        self.attach_location(location);
+        self.push_location(location);
     }
 
     pub(crate) const fn head_and_messages(&self) -> (Option<&Message>, &[Message]) {
@@ -94,7 +94,7 @@ impl Backtrace {
     }
 
     #[inline]
-    pub(crate) fn attach_location(&mut self, location: Location) {
+    pub(crate) fn push_location(&mut self, location: Location) {
         debug_assert!(
             if self.has_head() {
                 self.messages.len() > 1

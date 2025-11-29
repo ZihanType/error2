@@ -1,39 +1,36 @@
+use std::marker::PhantomData;
+
 use crate::{Attach, Location};
 
-pub trait IteratorExt: Iterator + Sized
+impl<T, W> Attach<AttachIter<Self, W>> for T
 where
-    Self::Item: Attach,
+    T: Iterator,
+    T::Item: Attach<W>,
 {
-    #[track_caller]
     #[inline]
-    fn attach(self) -> AttachIter<Self> {
-        self.attach_location(Location::caller())
-    }
-
-    #[inline]
-    fn attach_location(self, location: Location) -> AttachIter<Self> {
+    fn attach_location(self, location: Location) -> AttachIter<Self, W> {
         AttachIter {
             inner: self,
             location,
+            phantom: PhantomData,
         }
     }
 }
 
-impl<T: Iterator> IteratorExt for T where T::Item: Attach {}
-
 #[derive(Debug, Clone, Copy)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct AttachIter<I> {
+pub struct AttachIter<I, W> {
     inner: I,
     location: Location,
+    phantom: PhantomData<W>,
 }
 
-impl<I> Iterator for AttachIter<I>
+impl<I, W> Iterator for AttachIter<I, W>
 where
     I: Iterator,
-    I::Item: Attach,
+    I::Item: Attach<W>,
 {
-    type Item = I::Item;
+    type Item = W;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {

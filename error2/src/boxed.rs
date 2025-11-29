@@ -109,7 +109,7 @@ impl BoxedError2 {
 
         match <dyn Error + Send + Sync>::downcast::<BoxedError2>(Box::new(source)) {
             Ok(mut e) => {
-                e.backtrace_mut().attach_location(location);
+                e.backtrace_mut().push_location(location);
                 *e
             }
             Err(source) => {
@@ -146,7 +146,7 @@ impl BoxedError2 {
             let mut e =
                 <dyn Error + Send + Sync>::downcast::<BoxedError2>(Box::new(source)).unwrap();
 
-            e.backtrace_mut().attach_location(location);
+            e.backtrace_mut().push_location(location);
             *e
         } else {
             let display = source.to_string();
