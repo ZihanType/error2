@@ -1,4 +1,5 @@
 use proc_macro2::{Span, TokenStream};
+use quote::{ToTokens, quote};
 use syn::{Attribute, Field, Ident, Token, Visibility, punctuated::Punctuated};
 
 #[derive(Clone, Copy)]
@@ -73,5 +74,21 @@ impl ContextKind {
             ContextKind::Struct => "struct",
             ContextKind::Variant => "variant",
         }
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
+pub(crate) enum Trait {
+    Debug,
+    Display,
+}
+
+impl ToTokens for Trait {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let ts = match self {
+            Trait::Debug => quote! { ::core::fmt::Debug },
+            Trait::Display => quote! { ::core::fmt::Display },
+        };
+        tokens.extend(ts);
     }
 }

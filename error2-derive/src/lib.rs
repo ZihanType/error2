@@ -1,4 +1,5 @@
 mod error2;
+mod generics;
 mod messages;
 mod parser;
 mod types;

@@ -2,14 +2,15 @@ use std::str::FromStr;
 
 use heck::ToSnakeCase;
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::{ToTokens, format_ident, quote};
 use quote_use::quote_use;
 use syn::{
     Data, DataEnum, DataStruct, DataUnion, DeriveInput, Field, Fields, FieldsNamed, FieldsUnnamed,
-    Generics, Ident, Token, Variant, Visibility, punctuated::Punctuated,
+    Generics, Ident, Path, Token, Type, Variant, Visibility, parse_quote, punctuated::Punctuated,
 };
 
 use crate::{
+    generics::{InferredBounds, ParamsInScope},
     messages::{
         AT_LEAST_ONE_FIELD, AT_LEAST_ONE_VARIANT, DISPLAY_SET_TWO_PLACE,
         DISPLAY_TOKENS_NOT_ON_ENUM, NO_DISPLAY_ON_ENUM_OR_VARIANT, NO_DISPLAY_ON_STRUCT,
@@ -17,7 +18,7 @@ use crate::{
     },
     parser::{parse_type_attr, parse_variant_attr},
     types::{
-        ContextKind, ErrorKind, MyVariant, TypeAttr, TypeDisplayAttr, VariantAttr,
+        ContextKind, ErrorKind, MyVariant, Trait, TypeAttr, TypeDisplayAttr, VariantAttr,
         VartiantDisplayAttr,
     },
 };
@@ -37,6 +38,8 @@ pub(crate) fn generate(input: DeriveInput) -> syn::Result<TokenStream> {
         data,
     } = input;
 
+    let scope = ParamsInScope::new(&generics);
+
     let type_attr = parse_type_attr(&attrs)?;
 
     match data {
@@ -52,7 +55,7 @@ pub(crate) fn generate(input: DeriveInput) -> syn::Result<TokenStream> {
                 if named.is_empty() {
                     Err(syn::Error::new(brace_token.span.join(), AT_LEAST_ONE_FIELD))
                 } else {
-                    generate_struct(&crate_path, type_attr, ident, generics, named)
+                    generate_struct(&crate_path, type_attr, ident, &generics, named, &scope)
                 }
             }
         },
@@ -115,7 +118,7 @@ pub(crate) fn generate(input: DeriveInput) -> syn::Result<TokenStream> {
                 return Err(e);
             }
 
-            generate_enum(&crate_path, type_attr, ident, generics, variants)
+            generate_enum(&crate_path, type_attr, ident, &generics, variants, &scope)
         }
     }
 }
@@ -124,14 +127,17 @@ fn generate_struct(
     crate_path: &TokenStream,
     type_attr: TypeAttr,
     struct_ident: Ident,
-    generics: Generics,
+    generics: &Generics,
     fields: Punctuated<Field, Token![,]>,
+    scope: &ParamsInScope,
 ) -> syn::Result<TokenStream> {
     let TypeAttr {
         display: type_display,
         context_vis,
         mod_vis,
     } = type_attr;
+
+    let mut error_inferred_bounds = InferredBounds::with_capacity(3);
 
     let display_tokens = match type_display {
         TypeDisplayAttr::None => {
@@ -144,8 +150,7 @@ fn generate_struct(
     let mut all_field_idents: Vec<&Ident> = Vec::with_capacity(fields.len());
     let mut no_source_no_backtrace_field_idents: Vec<&Ident> = Vec::with_capacity(fields.len());
     let mut no_source_no_backtrace_field_generics: Vec<Ident> = Vec::with_capacity(fields.len());
-    let mut no_source_no_backtrace_generic_bounds: Vec<TokenStream> =
-        Vec::with_capacity(fields.len());
+    let mut no_source_no_backtrace_inferred_bounds = InferredBounds::with_capacity(fields.len());
     let mut source_field: Option<&Field> = None;
     let mut backtrace_field: Option<&Field> = None;
 
@@ -160,14 +165,16 @@ fn generate_struct(
             backtrace_field = Some(field);
         } else {
             no_source_no_backtrace_field_idents.push(ident);
-            no_source_no_backtrace_field_generics.push(format_ident!("__T{}", i));
+            let generic = format_ident!("__T{}", i);
+            no_source_no_backtrace_field_generics.push(generic.clone());
             let ty = &field.ty;
-            no_source_no_backtrace_generic_bounds.push(quote! { ::core::convert::Into<#ty> });
+            no_source_no_backtrace_inferred_bounds
+                .insert(generic, quote! { ::core::convert::Into<#ty> });
         }
     }
 
     let error_kind: ErrorKind;
-    let source_type: TokenStream;
+    let source_type: Type;
     let backtrace_field_tokens: TokenStream;
     let assert_source_not_impl_error2: TokenStream;
 
@@ -182,7 +189,7 @@ fn generate_struct(
         // root error
         (None, Some(_)) => {
             error_kind = ErrorKind::Root;
-            source_type = quote! { #crate_path::NoneError };
+            source_type = parse_quote! { #crate_path::NoneError };
             backtrace_field_tokens = quote! {
                 backtrace: #crate_path::Backtrace::new(),
             };
@@ -190,20 +197,22 @@ fn generate_struct(
         }
         // error2 error
         (Some(source_field), None) => {
+            let ty = &source_field.ty;
+
             error_kind = ErrorKind::Err2;
-            source_type = {
-                let ty = &source_field.ty;
-                quote! { #ty }
-            };
+            source_type = ty.clone();
             backtrace_field_tokens = quote! {};
             assert_source_not_impl_error2 = quote! {};
+            if scope.intersects(ty) {
+                error_inferred_bounds.insert(ty, quote! { #crate_path::Error2 + 'static });
+            }
         }
         // std error
         (Some(source_field), Some(_backtrace_field)) => {
             let ty = &source_field.ty;
 
             error_kind = ErrorKind::Std;
-            source_type = quote! { #ty };
+            source_type = ty.clone();
             backtrace_field_tokens = quote! {
                 backtrace: #crate_path::Backtrace::with_head(
                     ::core::any::type_name_of_val(&source),
@@ -254,23 +263,30 @@ fn generate_struct(
         },
     };
 
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
     let context_def = generate_context_def(
         crate_path,
         &struct_ident,
-        quote! { #struct_ident },
+        parse_quote! { #struct_ident },
         &struct_ident,
         &context_vis,
         error_kind,
         no_source_no_backtrace_field_idents,
         no_source_no_backtrace_field_generics,
-        no_source_no_backtrace_generic_bounds,
-        &generics,
+        no_source_no_backtrace_inferred_bounds.merge(&error_inferred_bounds),
+        generics,
         source_type,
         backtrace_field_tokens,
         assert_source_not_impl_error2,
     );
+
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    if generics.type_params().next().is_some() {
+        let self_token = <Token![Self]>::default();
+        error_inferred_bounds.insert(self_token, Trait::Debug);
+        error_inferred_bounds.insert(self_token, Trait::Display);
+    }
+    let error_where_clause = error_inferred_bounds.augment_where_clause(where_clause.cloned());
 
     let expand = quote_use! {
         # use core::fmt::{Display, Formatter, Result};
@@ -285,13 +301,13 @@ fn generate_struct(
             }
         }
 
-        impl #impl_generics Error for #struct_ident #ty_generics #where_clause {
+        impl #impl_generics Error for #struct_ident #ty_generics #error_where_clause {
             fn source(&self) -> Option<&(dyn Error + 'static)> {
                 #error_source_body
             }
         }
 
-        impl #impl_generics #crate_path::Error2 for #struct_ident #ty_generics #where_clause {
+        impl #impl_generics #crate_path::Error2 for #struct_ident #ty_generics #error_where_clause {
             #[inline]
             fn backtrace(&self) -> &#crate_path::Backtrace {
                 #backtrace_body
@@ -326,8 +342,9 @@ fn generate_enum(
     crate_path: &TokenStream,
     type_attr: TypeAttr,
     enum_ident: Ident,
-    generics: Generics,
+    generics: &Generics,
     variants: Vec<MyVariant>,
+    scope: &ParamsInScope,
 ) -> syn::Result<TokenStream> {
     let TypeAttr {
         display: type_display,
@@ -347,7 +364,10 @@ fn generate_enum(
 
     let mut errors = Vec::new();
 
-    for variant in variants {
+    let mut inputs: Vec<VariantInput> = Vec::with_capacity(variants.len());
+    let mut error_inferred_bounds = InferredBounds::with_capacity(3);
+
+    for variant in &variants {
         let MyVariant {
             attrs: variant_attrs,
             ident: variant_ident,
@@ -356,7 +376,7 @@ fn generate_enum(
 
         let VariantAttr {
             display: variant_display,
-        } = match parse_variant_attr(&variant_attrs) {
+        } = match parse_variant_attr(variant_attrs) {
             Ok(v) => v,
             Err(e) => {
                 errors.push(e);
@@ -402,8 +422,8 @@ fn generate_enum(
             Vec::with_capacity(named_fields.len());
         let mut no_source_no_backtrace_field_generics: Vec<Ident> =
             Vec::with_capacity(named_fields.len());
-        let mut no_source_no_backtrace_generic_bounds: Vec<TokenStream> =
-            Vec::with_capacity(named_fields.len());
+        let mut no_source_no_backtrace_inferred_bounds =
+            InferredBounds::with_capacity(named_fields.len());
         let mut source_field: Option<&Field> = None;
         let mut backtrace_field: Option<&Field> = None;
 
@@ -418,14 +438,16 @@ fn generate_enum(
                 backtrace_field = Some(field);
             } else {
                 no_source_no_backtrace_field_idents.push(ident);
-                no_source_no_backtrace_field_generics.push(format_ident!("__T{}", i));
+                let generic = format_ident!("__T{}", i);
+                no_source_no_backtrace_field_generics.push(generic.clone());
                 let ty = &field.ty;
-                no_source_no_backtrace_generic_bounds.push(quote! { ::core::convert::Into<#ty> });
+                no_source_no_backtrace_inferred_bounds
+                    .insert(generic, quote! { ::core::convert::Into<#ty> });
             }
         }
 
         let error_kind: ErrorKind;
-        let source_type: TokenStream;
+        let source_type: Type;
         let backtrace_field_tokens: TokenStream;
         let assert_source_not_impl_error2: TokenStream;
 
@@ -441,7 +463,7 @@ fn generate_enum(
             // root error
             (None, Some(_)) => {
                 error_kind = ErrorKind::Root;
-                source_type = quote! { #crate_path::NoneError };
+                source_type = parse_quote! { #crate_path::NoneError };
                 backtrace_field_tokens = quote! {
                     backtrace: #crate_path::Backtrace::new(),
                 };
@@ -449,20 +471,22 @@ fn generate_enum(
             }
             // error2 error
             (Some(source_field), None) => {
+                let ty = &source_field.ty;
+
                 error_kind = ErrorKind::Err2;
-                source_type = {
-                    let ty = &source_field.ty;
-                    quote! { #ty }
-                };
+                source_type = ty.clone();
                 backtrace_field_tokens = quote! {};
                 assert_source_not_impl_error2 = quote! {};
+                if scope.intersects(ty) {
+                    error_inferred_bounds.insert(ty, quote! { #crate_path::Error2 + 'static });
+                }
             }
             // std error
             (Some(source_field), Some(_backtrace_field)) => {
                 let ty = &source_field.ty;
 
                 error_kind = ErrorKind::Std;
-                source_type = quote! { #ty };
+                source_type = ty.clone();
                 backtrace_field_tokens = quote! {
                     backtrace: #crate_path::Backtrace::with_head(
                         ::core::any::type_name_of_val(&source),
@@ -475,7 +499,35 @@ fn generate_enum(
             }
         }
 
-        let VariantTokens {
+        inputs.push(VariantInput {
+            variant_ident,
+            error_kind,
+            all_field_idents,
+            no_source_no_backtrace_field_idents,
+            no_source_no_backtrace_field_generics,
+            no_source_no_backtrace_inferred_bounds,
+            source_type,
+            backtrace_field_tokens,
+            assert_source_not_impl_error2,
+            display_tokens,
+        });
+    }
+
+    for input in inputs {
+        let VariantInput {
+            variant_ident,
+            error_kind,
+            all_field_idents,
+            no_source_no_backtrace_field_idents,
+            no_source_no_backtrace_field_generics,
+            no_source_no_backtrace_inferred_bounds,
+            source_type,
+            backtrace_field_tokens,
+            assert_source_not_impl_error2,
+            display_tokens,
+        } = input;
+
+        let VariantOutput {
             context_def,
             display_arm,
             error_source_arm,
@@ -484,14 +536,14 @@ fn generate_enum(
         } = generate_variant(
             crate_path,
             &enum_ident,
-            &variant_ident,
+            variant_ident,
             &context_vis,
             error_kind,
             all_field_idents,
             no_source_no_backtrace_field_idents,
             no_source_no_backtrace_field_generics,
-            no_source_no_backtrace_generic_bounds,
-            &generics,
+            no_source_no_backtrace_inferred_bounds.merge(&error_inferred_bounds),
+            generics,
             source_type,
             backtrace_field_tokens,
             assert_source_not_impl_error2,
@@ -514,6 +566,13 @@ fn generate_enum(
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
+    if generics.type_params().next().is_some() {
+        let self_token = <Token![Self]>::default();
+        error_inferred_bounds.insert(self_token, Trait::Debug);
+        error_inferred_bounds.insert(self_token, Trait::Display);
+    }
+    let error_where_clause = error_inferred_bounds.augment_where_clause(where_clause.cloned());
+
     let expand = quote_use! {
         # use core::fmt::{Display, Formatter, Result};
         # use core::error::Error;
@@ -531,7 +590,7 @@ fn generate_enum(
             }
         }
 
-        impl #impl_generics Error for #enum_ident #ty_generics #where_clause {
+        impl #impl_generics Error for #enum_ident #ty_generics #error_where_clause {
             fn source(&self) -> Option<&(dyn Error + 'static)> {
                 match self {
                     #(#error_source_arms)*
@@ -539,7 +598,7 @@ fn generate_enum(
             }
         }
 
-        impl #impl_generics #crate_path::Error2 for #enum_ident #ty_generics #where_clause {
+        impl #impl_generics #crate_path::Error2 for #enum_ident #ty_generics #error_where_clause {
             #[inline]
             fn backtrace(&self) -> &#crate_path::Backtrace {
                 match self {
@@ -584,23 +643,23 @@ fn generate_variant(
     all_field_idents: Vec<&Ident>,
     no_source_no_backtrace_field_idents: Vec<&Ident>,
     no_source_no_backtrace_field_generics: Vec<Ident>,
-    no_source_no_backtrace_generic_bounds: Vec<TokenStream>,
+    all_inferred_bounds: InferredBounds,
     generics: &Generics,
-    source_type: TokenStream,
+    source_type: Type,
     backtrace_field_tokens: TokenStream,
     assert_source_not_impl_error2: TokenStream,
     display_tokens: Option<TokenStream>,
-) -> VariantTokens {
+) -> VariantOutput {
     let context_def = generate_context_def(
         crate_path,
         enum_ident,
-        quote! { #enum_ident::#variant_ident },
+        parse_quote! { #enum_ident::#variant_ident },
         variant_ident,
         vis,
         error_kind,
         no_source_no_backtrace_field_idents,
         no_source_no_backtrace_field_generics,
-        no_source_no_backtrace_generic_bounds,
+        all_inferred_bounds,
         generics,
         source_type,
         backtrace_field_tokens,
@@ -644,7 +703,7 @@ fn generate_variant(
         },
     };
 
-    VariantTokens {
+    VariantOutput {
         context_def,
         display_arm,
         error_source_arm,
@@ -653,7 +712,20 @@ fn generate_variant(
     }
 }
 
-struct VariantTokens {
+struct VariantInput<'a> {
+    variant_ident: &'a Ident,
+    error_kind: ErrorKind,
+    all_field_idents: Vec<&'a Ident>,
+    no_source_no_backtrace_field_idents: Vec<&'a Ident>,
+    no_source_no_backtrace_field_generics: Vec<Ident>,
+    no_source_no_backtrace_inferred_bounds: InferredBounds,
+    source_type: Type,
+    backtrace_field_tokens: TokenStream,
+    assert_source_not_impl_error2: TokenStream,
+    display_tokens: Option<TokenStream>,
+}
+
+struct VariantOutput {
     context_def: TokenStream,
     display_arm: TokenStream,
     error_source_arm: TokenStream,
@@ -665,15 +737,15 @@ struct VariantTokens {
 fn generate_context_def(
     crate_path: &TokenStream,
     type_ident: &Ident,
-    type_path: TokenStream,
+    type_path: Path,
     context_ident_prefix: &Ident,
     context_vis: &Visibility,
     error_kind: ErrorKind,
     no_source_no_backtrace_field_idents: Vec<&Ident>,
     no_source_no_backtrace_field_generics: Vec<Ident>,
-    no_source_no_backtrace_generic_bounds: Vec<TokenStream>,
+    mut all_inferred_bounds: InferredBounds,
     generics: &Generics,
-    source_type: TokenStream,
+    source_type: Type,
     backtrace_field_tokens: TokenStream,
     assert_source_not_impl_error2: TokenStream,
 ) -> TokenStream {
@@ -703,7 +775,7 @@ fn generate_context_def(
     let additional_impl_generics = if no_source_no_backtrace_field_idents.is_empty() {
         quote! { #impl_generics }
     } else {
-        let mut impl_generics = quote! { #impl_generics }.to_string();
+        let mut impl_generics = impl_generics.to_token_stream().to_string();
 
         match impl_generics.find('<') {
             Some(pos) => {
@@ -722,7 +794,7 @@ fn generate_context_def(
     };
 
     let fail_methods_impl_generics = {
-        let mut impl_generics = quote! { #impl_generics }.to_string();
+        let mut impl_generics = impl_generics.to_token_stream().to_string();
 
         match impl_generics.find('<') {
             Some(pos) => {
@@ -733,33 +805,14 @@ fn generate_context_def(
         }
     };
 
-    let additional_where_clause = if no_source_no_backtrace_field_idents.is_empty() {
-        quote! { #where_clause }
-    } else {
-        match where_clause {
-            Some(where_clause) => {
-                let where_clauses = where_clause.predicates.iter().collect::<Vec<_>>();
-
-                quote! {
-                    where
-                    #(
-                        #where_clauses,
-                    )*
-                    #(
-                        #no_source_no_backtrace_field_generics : #no_source_no_backtrace_generic_bounds,
-                    )*
-                }
-            }
-            None => {
-                quote! {
-                    where
-                    #(
-                        #no_source_no_backtrace_field_generics : #no_source_no_backtrace_generic_bounds,
-                    )*
-                }
-            }
-        }
-    };
+    {
+        let annotated_type = quote! {
+            #type_ident #ty_generics
+        };
+        all_inferred_bounds.insert(annotated_type.clone(), Trait::Debug);
+        all_inferred_bounds.insert(annotated_type, Trait::Display);
+    }
+    let where_clause = all_inferred_bounds.augment_where_clause(where_clause.cloned());
 
     let root_error_methods = if !error_kind.is_root() {
         quote! {}
@@ -776,26 +829,26 @@ fn generate_context_def(
                 #[must_use]
                 #[track_caller]
                 #[allow(dead_code)]
-                #context_vis fn build #impl_generics (self) -> #type_ident #ty_generics #additional_where_clause {
+                #context_vis fn build #impl_generics (self) -> #type_ident #ty_generics #where_clause {
                     Self::build_with_location(self, Location::caller())
                 }
 
                 #[inline]
                 #[must_use]
-                #context_vis fn build_with_location #impl_generics (self, location: Location) -> #type_ident #ty_generics #additional_where_clause {
+                #context_vis fn build_with_location #impl_generics (self, location: Location) -> #type_ident #ty_generics #where_clause {
                     <Self as ErrorWrap < NoneError, #type_ident #ty_generics > >::wrap(self, NoneError, location)
                 }
 
                 #[inline]
                 #[track_caller]
                 #[allow(dead_code)]
-                #context_vis fn fail #fail_methods_impl_generics (self) -> Result<__T, #type_ident #ty_generics> #additional_where_clause {
+                #context_vis fn fail #fail_methods_impl_generics (self) -> Result<__T, #type_ident #ty_generics> #where_clause {
                     Self::fail_with_location(self, Location::caller())
                 }
 
                 #[inline]
                 #[allow(dead_code)]
-                #context_vis fn fail_with_location #fail_methods_impl_generics (self, location: Location) -> Result<__T, #type_ident #ty_generics> #additional_where_clause {
+                #context_vis fn fail_with_location #fail_methods_impl_generics (self, location: Location) -> Result<__T, #type_ident #ty_generics> #where_clause {
                     Result::Err(self.build_with_location(location))
                 }
             }
@@ -821,7 +874,7 @@ fn generate_context_def(
 
         #root_error_methods
 
-        impl #additional_impl_generics ErrorWrap < #source_type, #type_ident #ty_generics > for #context_ident #context_generics #additional_where_clause {
+        impl #additional_impl_generics ErrorWrap < #source_type, #type_ident #ty_generics > for #context_ident #context_generics #where_clause {
             #[allow(unused_variables)]
             fn wrap(self, source: #source_type, location: Location) -> #type_ident #ty_generics {
                 #assert_source_not_impl_error2
