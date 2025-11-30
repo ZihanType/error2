@@ -17,24 +17,12 @@ pub trait Error2: Error {
 ## Example
 
 ```rust
-use std::{error, fmt, io};
+use std::io;
 
 use error2::{Attach, Backtrace, Error2, ResultExt};
 
 #[derive(Debug, Error2)]
-#[error2(display("IO error"))]
-pub struct IoErrorWrapper {
-    source: io::Error,
-    backtrace: Backtrace,
-}
-
-#[derive(Debug, Error2)]
-pub enum Error<T, U, S>
-where
-    T: Error2 + 'static,
-    U: fmt::Display + fmt::Debug,
-    S: error::Error + 'static,
-{
+pub enum CustomError {
     #[error2(display("IO error"))]
     IoError {
         source: io::Error,
@@ -46,19 +34,9 @@ where
         username: String,
         backtrace: Backtrace,
     },
-
-    #[error2(display("An error occurred, {some_field}"))]
-    OtherStd {
-        some_field: U,
-        source: S,
-        backtrace: Backtrace,
-    },
-
-    #[error2(display("An error occurred, {some_field}"))]
-    OtherErr2 { some_field: U, source: T },
 }
 
-fn read_file() -> Result<Vec<u8>, Error<IoErrorWrapper, i32, io::Error>> {
+fn read_file() -> Result<Vec<u8>, CustomError> {
     std::fs::read("aaaaa.txt").context(IoError2)
 }
 
@@ -68,9 +46,9 @@ fn main() {
     if let Err(e) = result {
         // Print the error message:
         //
-        // test_error2::Error<test_error2::IoErrorWrapper, i32, std::io::error::Error>: IO error
-        //     at src/main.rs:50:30
-        //     at src/main.rs:46:32
+        // test_error2::CustomError: IO error
+        //     at src/main.rs:26:30
+        //     at src/main.rs:22:32
         // std::io::error::Error: No such file or directory (os error 2)
         println!("{}", error2::extract_error_message(&e));
     }

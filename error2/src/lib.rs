@@ -19,6 +19,9 @@ mod static_str;
 #[cfg(feature = "stream")]
 mod stream;
 
+#[cfg(feature = "derive")]
+#[doc(hidden)]
+pub use ::static_assertions::assert_not_impl_any;
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
 #[cfg(feature = "derive")]
 pub use error2_derive::Error2;

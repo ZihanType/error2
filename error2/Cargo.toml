@@ -15,6 +15,7 @@ scc = { workspace = true }
 append-only-vec = { workspace = true }
 
 error2-derive = { workspace = true, optional = true }
+static_assertions = { workspace = true, optional = true }
 serde = { workspace = true, features = ["std", "derive"], optional = true }
 pin-project-lite = { workspace = true, optional = true }
 futures-core = { workspace = true, optional = true }
@@ -24,7 +25,7 @@ serde_json = { workspace = true, features = ["std"] }
 
 [features]
 default = ["derive"]
-derive = ["dep:error2-derive"]
+derive = ["dep:error2-derive", "dep:static_assertions"]
 serde = ["dep:serde"]
 future = ["dep:pin-project-lite"]
 stream = ["dep:pin-project-lite", "dep:futures-core"]

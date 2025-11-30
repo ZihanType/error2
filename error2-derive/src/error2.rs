@@ -169,6 +169,7 @@ fn generate_struct(
     let error_kind: ErrorKind;
     let source_type: TokenStream;
     let backtrace_field_tokens: TokenStream;
+    let assert_source_not_impl_error2: TokenStream;
 
     match (source_field, backtrace_field) {
         // incorrect definition
@@ -185,6 +186,7 @@ fn generate_struct(
             backtrace_field_tokens = quote! {
                 backtrace: #crate_path::Backtrace::new(),
             };
+            assert_source_not_impl_error2 = quote! {};
         }
         // error2 error
         (Some(source_field), None) => {
@@ -194,20 +196,23 @@ fn generate_struct(
                 quote! { #ty }
             };
             backtrace_field_tokens = quote! {};
+            assert_source_not_impl_error2 = quote! {};
         }
         // std error
         (Some(source_field), Some(_backtrace_field)) => {
+            let ty = &source_field.ty;
+
             error_kind = ErrorKind::Std;
-            source_type = {
-                let ty = &source_field.ty;
-                quote! { #ty }
-            };
+            source_type = quote! { #ty };
             backtrace_field_tokens = quote! {
                 backtrace: #crate_path::Backtrace::with_head(
                     ::core::any::type_name_of_val(&source),
                     ::std::string::ToString::to_string(&source)
                 ),
             };
+            assert_source_not_impl_error2 = quote! {
+                #crate_path::assert_not_impl_any!(#ty: #crate_path::Error2);
+            }
         }
     }
 
@@ -264,6 +269,7 @@ fn generate_struct(
         &generics,
         source_type,
         backtrace_field_tokens,
+        assert_source_not_impl_error2,
     );
 
     let expand = quote_use! {
@@ -421,6 +427,7 @@ fn generate_enum(
         let error_kind: ErrorKind;
         let source_type: TokenStream;
         let backtrace_field_tokens: TokenStream;
+        let assert_source_not_impl_error2: TokenStream;
 
         match (source_field, backtrace_field) {
             // incorrect definition
@@ -438,6 +445,7 @@ fn generate_enum(
                 backtrace_field_tokens = quote! {
                     backtrace: #crate_path::Backtrace::new(),
                 };
+                assert_source_not_impl_error2 = quote! {};
             }
             // error2 error
             (Some(source_field), None) => {
@@ -447,20 +455,23 @@ fn generate_enum(
                     quote! { #ty }
                 };
                 backtrace_field_tokens = quote! {};
+                assert_source_not_impl_error2 = quote! {};
             }
             // std error
             (Some(source_field), Some(_backtrace_field)) => {
+                let ty = &source_field.ty;
+
                 error_kind = ErrorKind::Std;
-                source_type = {
-                    let ty = &source_field.ty;
-                    quote! { #ty }
-                };
+                source_type = quote! { #ty };
                 backtrace_field_tokens = quote! {
                     backtrace: #crate_path::Backtrace::with_head(
                         ::core::any::type_name_of_val(&source),
                         ::std::string::ToString::to_string(&source)
                     ),
                 };
+                assert_source_not_impl_error2 = quote! {
+                    #crate_path::assert_not_impl_any!(#ty: #crate_path::Error2);
+                }
             }
         }
 
@@ -483,6 +494,7 @@ fn generate_enum(
             &generics,
             source_type,
             backtrace_field_tokens,
+            assert_source_not_impl_error2,
             display_tokens,
         );
 
@@ -576,6 +588,7 @@ fn generate_variant(
     generics: &Generics,
     source_type: TokenStream,
     backtrace_field_tokens: TokenStream,
+    assert_source_not_impl_error2: TokenStream,
     display_tokens: Option<TokenStream>,
 ) -> VariantTokens {
     let context_def = generate_context_def(
@@ -591,6 +604,7 @@ fn generate_variant(
         generics,
         source_type,
         backtrace_field_tokens,
+        assert_source_not_impl_error2,
     );
 
     let display_arm = match display_tokens {
@@ -661,6 +675,7 @@ fn generate_context_def(
     generics: &Generics,
     source_type: TokenStream,
     backtrace_field_tokens: TokenStream,
+    assert_source_not_impl_error2: TokenStream,
 ) -> TokenStream {
     let context_ident = format_ident!("{}2", context_ident_prefix);
 
@@ -809,6 +824,8 @@ fn generate_context_def(
         impl #additional_impl_generics ErrorWrap < #source_type, #type_ident #ty_generics > for #context_ident #context_generics #additional_where_clause {
             #[allow(unused_variables)]
             fn wrap(self, source: #source_type, location: Location) -> #type_ident #ty_generics {
+                #assert_source_not_impl_error2
+
                 let mut error = #type_path {
                     #(
                         #no_source_no_backtrace_field_idents : Into::into(self.#no_source_no_backtrace_field_idents),
