@@ -3,6 +3,7 @@
 mod attach;
 mod backtrace;
 mod boxed;
+mod context;
 mod error2;
 mod error_wrap;
 mod extract;
@@ -12,8 +13,7 @@ mod future;
 mod iter;
 mod location;
 mod macros;
-mod option_ext;
-mod result_ext;
+mod none;
 mod static_str;
 #[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
 #[cfg(feature = "stream")]
@@ -37,11 +37,11 @@ pub use self::{
     attach::Attach,
     backtrace::Backtrace,
     boxed::{BoxedError2, ViaErr2, ViaNone, ViaStd},
+    context::Context,
     error_wrap::ErrorWrap,
     error2::Error2,
     extract::{extract_error_message, extract_error_stack},
     iter::AttachIter,
     location::Location,
-    option_ext::{NoneError, OptionExt},
-    result_ext::ResultExt,
+    none::NoneError,
 };

@@ -783,7 +783,7 @@ fn generate_context_def(
                 #[inline]
                 #[must_use]
                 #context_vis fn build_with_location #impl_generics (self, location: Location) -> #type_ident #ty_generics #additional_where_clause {
-                    <Self as ErrorWrap < #source_type, #type_ident #ty_generics > >::wrap(self, NoneError, location)
+                    <Self as ErrorWrap < NoneError, #type_ident #ty_generics > >::wrap(self, NoneError, location)
                 }
 
                 #[inline]
