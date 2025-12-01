@@ -18,8 +18,8 @@ use crate::{
     },
     parser::{parse_type_attr, parse_variant_attr},
     types::{
-        ContextKind, ErrorKind, MyVariant, Trait, TypeAttr, TypeDisplayAttr, VariantAttr,
-        VartiantDisplayAttr,
+        ContextKind, EnumDisplayAttr, ErrorKind, MyVariant, Trait, TypeAttr, TypeDisplayAttr,
+        VariantAttr, VartiantDisplayAttr,
     },
 };
 
@@ -40,6 +40,16 @@ pub(crate) fn generate(input: DeriveInput) -> syn::Result<TokenStream> {
 
     let scope = ParamsInScope::new(&generics);
 
+    let mut error_inferred_bounds = InferredBounds::with_capacity(3);
+    if generics.type_params().next().is_some() {
+        let (_, ty_generics, _) = generics.split_for_impl();
+        let ty = quote! {
+            #ident #ty_generics
+        };
+        error_inferred_bounds.insert(ty.clone(), Trait::Debug);
+        error_inferred_bounds.insert(ty, Trait::Display);
+    }
+
     let type_attr = parse_type_attr(&attrs)?;
 
     match data {
@@ -55,7 +65,15 @@ pub(crate) fn generate(input: DeriveInput) -> syn::Result<TokenStream> {
                 if named.is_empty() {
                     Err(syn::Error::new(brace_token.span.join(), AT_LEAST_ONE_FIELD))
                 } else {
-                    generate_struct(&crate_path, type_attr, ident, &generics, named, &scope)
+                    generate_struct(
+                        &crate_path,
+                        type_attr,
+                        ident,
+                        &generics,
+                        named,
+                        &scope,
+                        error_inferred_bounds,
+                    )
                 }
             }
         },
@@ -118,7 +136,15 @@ pub(crate) fn generate(input: DeriveInput) -> syn::Result<TokenStream> {
                 return Err(e);
             }
 
-            generate_enum(&crate_path, type_attr, ident, &generics, variants, &scope)
+            generate_enum(
+                &crate_path,
+                type_attr,
+                ident,
+                &generics,
+                variants,
+                &scope,
+                error_inferred_bounds,
+            )
         }
     }
 }
@@ -130,14 +156,13 @@ fn generate_struct(
     generics: &Generics,
     fields: Punctuated<Field, Token![,]>,
     scope: &ParamsInScope,
+    mut error_inferred_bounds: InferredBounds,
 ) -> syn::Result<TokenStream> {
     let TypeAttr {
         display: type_display,
         context_vis,
         mod_vis,
     } = type_attr;
-
-    let mut error_inferred_bounds = InferredBounds::with_capacity(3);
 
     let display_tokens = match type_display {
         TypeDisplayAttr::None => {
@@ -225,16 +250,6 @@ fn generate_struct(
         }
     }
 
-    let display_body = match display_tokens {
-        None => quote! {},
-        Some(tokens) => quote! {
-            #[allow(unused_variables)]
-            #[allow(unused_assignments)]
-            let Self { #(#all_field_idents,)* } = self;
-            write!(f, #tokens)
-        },
-    };
-
     let error_source_body = if error_kind.is_root() {
         quote! {
             ::core::option::Option::None
@@ -281,25 +296,31 @@ fn generate_struct(
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    if generics.type_params().next().is_some() {
-        let self_token = <Token![Self]>::default();
-        error_inferred_bounds.insert(self_token, Trait::Debug);
-        error_inferred_bounds.insert(self_token, Trait::Display);
-    }
+    let display_impl = match display_tokens {
+        None => quote! {},
+        Some(tokens) => quote_use! {
+            # use core::fmt::{Display, Formatter, Result};
+
+            impl #impl_generics Display for #struct_ident #ty_generics #where_clause {
+                fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                    #[allow(unused_variables)]
+                    #[allow(unused_assignments)]
+                    let Self { #(#all_field_idents,)* } = self;
+                    write!(f, #tokens)
+                }
+            }
+        },
+    };
+
     let error_where_clause = error_inferred_bounds.augment_where_clause(where_clause.cloned());
 
     let expand = quote_use! {
-        # use core::fmt::{Display, Formatter, Result};
         # use core::error::Error;
         # use core::option::Option;
 
         #context_def
 
-        impl #impl_generics Display for #struct_ident #ty_generics #where_clause {
-            fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-                #display_body
-            }
-        }
+        #display_impl
 
         impl #impl_generics Error for #struct_ident #ty_generics #error_where_clause {
             fn source(&self) -> Option<&(dyn Error + 'static)> {
@@ -345,6 +366,7 @@ fn generate_enum(
     generics: &Generics,
     variants: Vec<MyVariant>,
     scope: &ParamsInScope,
+    mut error_inferred_bounds: InferredBounds,
 ) -> syn::Result<TokenStream> {
     let TypeAttr {
         display: type_display,
@@ -352,9 +374,13 @@ fn generate_enum(
         mod_vis,
     } = type_attr;
 
-    if let TypeDisplayAttr::Enabled { meta_span, .. } = type_display {
-        return Err(syn::Error::new(meta_span, DISPLAY_TOKENS_NOT_ON_ENUM));
-    }
+    let enum_display = match type_display {
+        TypeDisplayAttr::None => EnumDisplayAttr::None,
+        TypeDisplayAttr::Disabled { meta_span } => EnumDisplayAttr::Disabled { meta_span },
+        TypeDisplayAttr::Enabled { meta_span, .. } => {
+            return Err(syn::Error::new(meta_span, DISPLAY_TOKENS_NOT_ON_ENUM));
+        }
+    };
 
     let mut context_defs = Vec::with_capacity(variants.len());
     let mut display_arms = Vec::with_capacity(variants.len());
@@ -365,7 +391,6 @@ fn generate_enum(
     let mut errors = Vec::new();
 
     let mut inputs: Vec<VariantInput> = Vec::with_capacity(variants.len());
-    let mut error_inferred_bounds = InferredBounds::with_capacity(3);
 
     for variant in &variants {
         let MyVariant {
@@ -384,13 +409,11 @@ fn generate_enum(
             }
         };
 
-        let display_tokens = match (&type_display, variant_display) {
-            (TypeDisplayAttr::Enabled { .. }, _) => unreachable!(),
+        let display_tokens = match (&enum_display, variant_display) {
+            (EnumDisplayAttr::None, VartiantDisplayAttr::Enabled { tokens, .. }) => Some(tokens),
+            (EnumDisplayAttr::Disabled { .. }, VartiantDisplayAttr::None) => None,
 
-            (TypeDisplayAttr::None, VartiantDisplayAttr::Enabled { tokens, .. }) => Some(tokens),
-            (TypeDisplayAttr::Disabled { .. }, VartiantDisplayAttr::None) => None,
-
-            (TypeDisplayAttr::None, VartiantDisplayAttr::None) => {
+            (EnumDisplayAttr::None, VartiantDisplayAttr::None) => {
                 errors.push(syn::Error::new(
                     enum_ident.span(),
                     NO_DISPLAY_ON_ENUM_OR_VARIANT,
@@ -401,9 +424,8 @@ fn generate_enum(
                 ));
                 continue;
             }
-
             (
-                TypeDisplayAttr::Disabled {
+                EnumDisplayAttr::Disabled {
                     meta_span: enum_meta_span,
                 },
                 VartiantDisplayAttr::Enabled {
@@ -566,29 +588,32 @@ fn generate_enum(
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    if generics.type_params().next().is_some() {
-        let self_token = <Token![Self]>::default();
-        error_inferred_bounds.insert(self_token, Trait::Debug);
-        error_inferred_bounds.insert(self_token, Trait::Display);
-    }
+    let display_impl = match enum_display {
+        EnumDisplayAttr::Disabled { .. } => quote! {},
+        EnumDisplayAttr::None => quote_use! {
+            # use core::fmt::{Display, Formatter, Result};
+
+            impl #impl_generics Display for #enum_ident #ty_generics #where_clause {
+                fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                    #[allow(unused_variables)]
+                    #[allow(unused_assignments)]
+                    match self {
+                        #(#display_arms)*
+                    }
+                }
+            }
+        },
+    };
+
     let error_where_clause = error_inferred_bounds.augment_where_clause(where_clause.cloned());
 
     let expand = quote_use! {
-        # use core::fmt::{Display, Formatter, Result};
         # use core::error::Error;
         # use core::option::Option;
 
         #(#context_defs)*
 
-        impl #impl_generics Display for #enum_ident #ty_generics #where_clause {
-            fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-                #[allow(unused_variables)]
-                #[allow(unused_assignments)]
-                match self {
-                    #(#display_arms)*
-                }
-            }
-        }
+        #display_impl
 
         impl #impl_generics Error for #enum_ident #ty_generics #error_where_clause {
             fn source(&self) -> Option<&(dyn Error + 'static)> {
@@ -743,7 +768,7 @@ fn generate_context_def(
     error_kind: ErrorKind,
     no_source_no_backtrace_field_idents: Vec<&Ident>,
     no_source_no_backtrace_field_generics: Vec<Ident>,
-    mut all_inferred_bounds: InferredBounds,
+    all_inferred_bounds: InferredBounds,
     generics: &Generics,
     source_type: Type,
     backtrace_field_tokens: TokenStream,
@@ -805,13 +830,6 @@ fn generate_context_def(
         }
     };
 
-    {
-        let annotated_type = quote! {
-            #type_ident #ty_generics
-        };
-        all_inferred_bounds.insert(annotated_type.clone(), Trait::Debug);
-        all_inferred_bounds.insert(annotated_type, Trait::Display);
-    }
     let where_clause = all_inferred_bounds.augment_where_clause(where_clause.cloned());
 
     let root_error_methods = if !error_kind.is_root() {

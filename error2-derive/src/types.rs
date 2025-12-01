@@ -32,6 +32,11 @@ impl TypeDisplayAttr {
     }
 }
 
+pub(crate) enum EnumDisplayAttr {
+    None,
+    Disabled { meta_span: Span },
+}
+
 pub(crate) enum VartiantDisplayAttr {
     None,
     Enabled {
