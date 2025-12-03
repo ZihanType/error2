@@ -1,12 +1,13 @@
+use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Attribute, LitBool, Meta, Token, Visibility, punctuated::Punctuated, spanned::Spanned};
+use syn::{Attribute, Meta, Token, Visibility, punctuated::Punctuated, spanned::Spanned};
 
 use crate::{
     messages::{
-        DISABLE_DISPLAY_MUST_ON_TYPE, DISPLAY_MUST_IN_META_LIST, EXPECTED_IDENT,
-        MODULE_MUST_IN_PATH, VIS_MUST_IN_META_LIST, specified_multiple_times, unknown_single_attr,
+        DISPLAY_MUST_IN_META_LIST, EXPECTED_IDENT, MODULE_MUST_IN_PATH, VIS_MUST_IN_META_LIST,
+        specified_multiple_times, unknown_single_attr,
     },
-    types::{TypeAttr, TypeDisplayAttr, VariantAttr, VartiantDisplayAttr},
+    types::{TypeAttr, TypeDisplayAttr, VariantAttr},
 };
 
 pub(crate) fn parse_type_attr(attrs: &[Attribute]) -> syn::Result<TypeAttr> {
@@ -54,18 +55,9 @@ pub(crate) fn parse_type_attr(attrs: &[Attribute]) -> syn::Result<TypeAttr> {
                     continue;
                 }
 
-                match list.parse_args() {
-                    Ok(LitBool { value: false, .. }) => {
-                        *display = TypeDisplayAttr::Disabled {
-                            meta_span: list.span(),
-                        }
-                    }
-                    _ => {
-                        *display = TypeDisplayAttr::Enabled {
-                            meta_span: list.span(),
-                            tokens: list.tokens,
-                        }
-                    }
+                *display = TypeDisplayAttr::Enabled {
+                    meta_span: list.span(),
+                    tokens: list.tokens,
                 }
             } else if path_ident == "vis" {
                 let list = match meta {
@@ -155,7 +147,7 @@ pub(crate) fn parse_type_attr(attrs: &[Attribute]) -> syn::Result<TypeAttr> {
 }
 
 pub(crate) fn parse_variant_attr(attrs: &[Attribute]) -> syn::Result<VariantAttr> {
-    fn inner(attr: &Attribute, display: &mut VartiantDisplayAttr, errors: &mut Vec<syn::Error>) {
+    fn inner(attr: &Attribute, display: &mut Option<TokenStream>, errors: &mut Vec<syn::Error>) {
         if !attr.path().is_ident("error2") {
             return;
         }
@@ -193,17 +185,7 @@ pub(crate) fn parse_variant_attr(attrs: &[Attribute]) -> syn::Result<VariantAttr
                     continue;
                 }
 
-                match list.parse_args() {
-                    Ok(LitBool { value: false, .. }) => {
-                        errors.push(syn::Error::new(list.span(), DISABLE_DISPLAY_MUST_ON_TYPE));
-                    }
-                    _ => {
-                        *display = VartiantDisplayAttr::Enabled {
-                            meta_span: list.span(),
-                            tokens: list.tokens,
-                        }
-                    }
-                }
+                *display = Some(list.tokens);
             } else {
                 errors.push(syn::Error::new(
                     path_ident.span(),
@@ -213,7 +195,7 @@ pub(crate) fn parse_variant_attr(attrs: &[Attribute]) -> syn::Result<VariantAttr
         }
     }
 
-    let mut display = VartiantDisplayAttr::None;
+    let mut display = None;
     let mut errors = Vec::new();
 
     attrs

@@ -17,9 +17,6 @@ impl ErrorKind {
 
 pub(crate) enum TypeDisplayAttr {
     None,
-    Disabled {
-        meta_span: Span,
-    },
     Enabled {
         meta_span: Span,
         tokens: TokenStream,
@@ -32,25 +29,6 @@ impl TypeDisplayAttr {
     }
 }
 
-pub(crate) enum EnumDisplayAttr {
-    None,
-    Disabled { meta_span: Span },
-}
-
-pub(crate) enum VartiantDisplayAttr {
-    None,
-    Enabled {
-        meta_span: Span,
-        tokens: TokenStream,
-    },
-}
-
-impl VartiantDisplayAttr {
-    pub(crate) fn is_none(&self) -> bool {
-        matches!(self, VartiantDisplayAttr::None)
-    }
-}
-
 pub(crate) struct TypeAttr {
     pub(crate) display: TypeDisplayAttr,
     pub(crate) context_vis: Visibility,
@@ -58,7 +36,7 @@ pub(crate) struct TypeAttr {
 }
 
 pub(crate) struct VariantAttr {
-    pub(crate) display: VartiantDisplayAttr,
+    pub(crate) display: Option<TokenStream>,
 }
 
 pub(crate) struct MyVariant {

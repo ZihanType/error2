@@ -12,15 +12,11 @@ use syn::{
 use crate::{
     generics::{InferredBounds, ParamsInScope},
     messages::{
-        AT_LEAST_ONE_FIELD, AT_LEAST_ONE_VARIANT, DISPLAY_SET_TWO_PLACE,
-        DISPLAY_TOKENS_NOT_ON_ENUM, NO_DISPLAY_ON_ENUM_OR_VARIANT, NO_DISPLAY_ON_STRUCT,
-        SUPPORTED_TYPES, incorrect_def,
+        AT_LEAST_ONE_FIELD, AT_LEAST_ONE_VARIANT, DISPLAY_TOKENS_NOT_ON_ENUM,
+        MISSING_DISPLAY_ON_VARIANT, SUPPORTED_TYPES, incorrect_def,
     },
     parser::{parse_type_attr, parse_variant_attr},
-    types::{
-        ContextKind, EnumDisplayAttr, ErrorKind, MyVariant, Trait, TypeAttr, TypeDisplayAttr,
-        VariantAttr, VartiantDisplayAttr,
-    },
+    types::{ContextKind, ErrorKind, MyVariant, Trait, TypeAttr, TypeDisplayAttr, VariantAttr},
 };
 
 fn crate_path() -> TokenStream {
@@ -165,10 +161,7 @@ fn generate_struct(
     } = type_attr;
 
     let display_tokens = match type_display {
-        TypeDisplayAttr::None => {
-            return Err(syn::Error::new(struct_ident.span(), NO_DISPLAY_ON_STRUCT));
-        }
-        TypeDisplayAttr::Disabled { .. } => None,
+        TypeDisplayAttr::None => None,
         TypeDisplayAttr::Enabled { tokens, .. } => Some(tokens),
     };
 
@@ -374,23 +367,14 @@ fn generate_enum(
         mod_vis,
     } = type_attr;
 
-    let enum_display = match type_display {
-        TypeDisplayAttr::None => EnumDisplayAttr::None,
-        TypeDisplayAttr::Disabled { meta_span } => EnumDisplayAttr::Disabled { meta_span },
-        TypeDisplayAttr::Enabled { meta_span, .. } => {
-            return Err(syn::Error::new(meta_span, DISPLAY_TOKENS_NOT_ON_ENUM));
-        }
+    if let TypeDisplayAttr::Enabled { meta_span, .. } = type_display {
+        return Err(syn::Error::new(meta_span, DISPLAY_TOKENS_NOT_ON_ENUM));
     };
-
-    let mut context_defs = Vec::with_capacity(variants.len());
-    let mut display_arms = Vec::with_capacity(variants.len());
-    let mut error_source_arms = Vec::with_capacity(variants.len());
-    let mut backtrace_arms = Vec::with_capacity(variants.len());
-    let mut backtrace_mut_arms = Vec::with_capacity(variants.len());
 
     let mut errors = Vec::new();
 
     let mut inputs: Vec<VariantInput> = Vec::with_capacity(variants.len());
+    let mut exist_display_on_variant = false;
 
     for variant in &variants {
         let MyVariant {
@@ -409,35 +393,9 @@ fn generate_enum(
             }
         };
 
-        let display_tokens = match (&enum_display, variant_display) {
-            (EnumDisplayAttr::None, VartiantDisplayAttr::Enabled { tokens, .. }) => Some(tokens),
-            (EnumDisplayAttr::Disabled { .. }, VartiantDisplayAttr::None) => None,
-
-            (EnumDisplayAttr::None, VartiantDisplayAttr::None) => {
-                errors.push(syn::Error::new(
-                    enum_ident.span(),
-                    NO_DISPLAY_ON_ENUM_OR_VARIANT,
-                ));
-                errors.push(syn::Error::new(
-                    variant_ident.span(),
-                    NO_DISPLAY_ON_ENUM_OR_VARIANT,
-                ));
-                continue;
-            }
-            (
-                EnumDisplayAttr::Disabled {
-                    meta_span: enum_meta_span,
-                },
-                VartiantDisplayAttr::Enabled {
-                    meta_span: variant_meta_span,
-                    ..
-                },
-            ) => {
-                errors.push(syn::Error::new(*enum_meta_span, DISPLAY_SET_TWO_PLACE));
-                errors.push(syn::Error::new(variant_meta_span, DISPLAY_SET_TWO_PLACE));
-                continue;
-            }
-        };
+        if variant_display.is_some() {
+            exist_display_on_variant = true;
+        }
 
         let mut all_field_idents: Vec<&Ident> = Vec::with_capacity(named_fields.len());
         let mut no_source_no_backtrace_field_idents: Vec<&Ident> =
@@ -531,9 +489,15 @@ fn generate_enum(
             source_type,
             backtrace_field_tokens,
             assert_source_not_impl_error2,
-            display_tokens,
+            variant_display,
         });
     }
+
+    let mut context_defs = Vec::with_capacity(variants.len());
+    let mut display_arms = Vec::with_capacity(variants.len());
+    let mut error_source_arms = Vec::with_capacity(variants.len());
+    let mut backtrace_arms = Vec::with_capacity(variants.len());
+    let mut backtrace_mut_arms = Vec::with_capacity(variants.len());
 
     for input in inputs {
         let VariantInput {
@@ -546,8 +510,16 @@ fn generate_enum(
             source_type,
             backtrace_field_tokens,
             assert_source_not_impl_error2,
-            display_tokens,
+            variant_display,
         } = input;
+
+        if variant_display.is_none() && exist_display_on_variant {
+            errors.push(syn::Error::new(
+                variant_ident.span(),
+                MISSING_DISPLAY_ON_VARIANT,
+            ));
+            continue;
+        }
 
         let VariantOutput {
             context_def,
@@ -569,7 +541,7 @@ fn generate_enum(
             source_type,
             backtrace_field_tokens,
             assert_source_not_impl_error2,
-            display_tokens,
+            variant_display,
         );
 
         context_defs.push(context_def);
@@ -588,9 +560,10 @@ fn generate_enum(
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let display_impl = match enum_display {
-        EnumDisplayAttr::Disabled { .. } => quote! {},
-        EnumDisplayAttr::None => quote_use! {
+    let display_impl = if !exist_display_on_variant {
+        quote! {}
+    } else {
+        quote_use! {
             # use core::fmt::{Display, Formatter, Result};
 
             impl #impl_generics Display for #enum_ident #ty_generics #where_clause {
@@ -602,7 +575,7 @@ fn generate_enum(
                     }
                 }
             }
-        },
+        }
     };
 
     let error_where_clause = error_inferred_bounds.augment_where_clause(where_clause.cloned());
@@ -747,7 +720,7 @@ struct VariantInput<'a> {
     source_type: Type,
     backtrace_field_tokens: TokenStream,
     assert_source_not_impl_error2: TokenStream,
-    display_tokens: Option<TokenStream>,
+    variant_display: Option<TokenStream>,
 }
 
 struct VariantOutput {
