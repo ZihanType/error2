@@ -50,6 +50,7 @@ fn crawl(in_scope: &ParamsInScope, ty: &Type, found: &mut bool) {
     }
 }
 
+// IndexMap<Type, IndexSet<TypeParamBound>>
 pub(crate) struct InferredBounds {
     bounds: HashMap<String, (HashSet<String>, Punctuated<TokenStream, Token![+]>)>,
     order: Vec<TokenStream>,

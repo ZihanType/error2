@@ -809,10 +809,7 @@ fn generate_context_def(
         quote! {}
     } else {
         quote_use! {
-            # use core::convert::Into;
             # use core::result::Result;
-            # use core::any::type_name_of_val;
-            # use std::string::ToString;
             # use #crate_path::{ErrorWrap, NoneError, Location};
 
             impl #context_generics #context_ident #context_generics {
