@@ -857,7 +857,7 @@ fn generate_context_def(
         # use std::string::ToString;
         # use #crate_path::{ErrorWrap, Error2, Location};
 
-        #[derive(Debug, Copy, Clone)]
+        #[derive(Debug, Clone, Copy)]
         #context_vis struct #context_ident #context_generics #context_struct_body
 
         #root_error_methods

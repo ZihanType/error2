@@ -14,7 +14,7 @@ mod iter;
 mod location;
 mod macros;
 mod none;
-mod static_str;
+mod str_id;
 #[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
 #[cfg(feature = "stream")]
 mod stream;
@@ -29,7 +29,6 @@ pub use ::static_assertions::assert_not_impl_any;
 #[cfg_attr(docsrs, doc(cfg(feature = "future")))]
 #[cfg(feature = "future")]
 pub use self::future::AttachFuture;
-pub(crate) use self::static_str::StaticStr;
 #[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
 #[cfg(feature = "stream")]
 pub use self::stream::AttachStream;
@@ -45,3 +44,4 @@ pub use self::{
     location::Location,
     none::NoneError,
 };
+pub(crate) use self::{backtrace::BakctraceEntry, str_id::StrId};

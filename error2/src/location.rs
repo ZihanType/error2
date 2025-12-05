@@ -1,11 +1,11 @@
 use std::{fmt, panic};
 
-use crate::StaticStr;
+use crate::StrId;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Location {
-    file: StaticStr,
+    file: StrId,
     line: u32,
     column: u32,
 }
@@ -49,6 +49,18 @@ impl Location {
             line: location.line(),
             column: location.column(),
         }
+    }
+
+    pub(crate) const fn uninit() -> Self {
+        Self {
+            file: StrId::uninit(),
+            line: 0,
+            column: 0,
+        }
+    }
+
+    pub(crate) const fn is_uninit(&self) -> bool {
+        self.file.is_uninit()
     }
 }
 
