@@ -13,6 +13,14 @@ pub(crate) enum BakctraceEntry {
     Locations(DoubleLocations),
 }
 
+const _: () = {
+    ["Size of `Message`"][mem::size_of::<Message>() - 24usize];
+    ["Size of `DoubleLocations`"][mem::size_of::<DoubleLocations>() - 24usize];
+    ["`Message` and `DoubleLocations` must have the same size"]
+        [mem::size_of::<Message>() - mem::size_of::<DoubleLocations>()];
+    ["Size of `BakctraceEntry`"][mem::size_of::<BakctraceEntry>() - 32usize];
+};
+
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Backtrace {
