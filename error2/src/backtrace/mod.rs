@@ -72,16 +72,22 @@ impl Backtrace {
     }
 
     pub(crate) fn push_location(&mut self, location: Location) {
-        let Some(entry) = self.entries.last_mut() else {
-            unreachable!()
-        };
+        debug_assert!(matches!(
+            self.entries.first(),
+            Some(BakctraceEntry::Message(_))
+        ));
+
+        let entry = self
+            .entries
+            .last_mut()
+            .expect("there is must at least one message entry");
 
         match entry {
             BakctraceEntry::Locations(locations) if !locations.is_full() => {
                 let l = locations.push(location);
                 debug_assert!(l.is_none());
             }
-            _ => {
+            BakctraceEntry::Message(_) | BakctraceEntry::Locations(_) => {
                 self.entries
                     .push(BakctraceEntry::Locations(DoubleLocations::new(location)));
             }
