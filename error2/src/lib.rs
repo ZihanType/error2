@@ -13,7 +13,7 @@ mod future;
 mod iter;
 mod location;
 mod macros;
-mod none;
+mod none_error;
 mod root_error;
 mod str_id;
 #[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
@@ -43,7 +43,7 @@ pub use self::{
     extract::{extract_error_message, extract_error_stack},
     iter::AttachIter,
     location::Location,
-    none::NoneError,
+    none_error::NoneError,
     root_error::RootError,
 };
 pub(crate) use self::{backtrace::BakctraceEntry, str_id::StrId};
