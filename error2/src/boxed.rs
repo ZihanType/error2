@@ -1,18 +1,18 @@
-use std::{any, error::Error, fmt, sync::LazyLock};
+use std::{error::Error, fmt};
 
 use crate::{Backtrace, Error2, ErrorWrap, Location, NoneError};
-
-static BOXED_TYPE_NAME: LazyLock<&'static str> = LazyLock::new(any::type_name::<BoxedError2>);
 
 struct StringError(Box<str>);
 
 impl fmt::Display for StringError {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
     }
 }
 
 impl fmt::Debug for StringError {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.0, f)
     }
@@ -26,18 +26,21 @@ pub struct BoxedError2 {
 }
 
 impl fmt::Display for BoxedError2 {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.source, f)
     }
 }
 
 impl fmt::Debug for BoxedError2 {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.source, f)
     }
 }
 
 impl Error for BoxedError2 {
+    #[inline]
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         if self.source.is::<StringError>() {
             None
@@ -48,10 +51,12 @@ impl Error for BoxedError2 {
 }
 
 impl Error2 for BoxedError2 {
+    #[inline]
     fn backtrace(&self) -> &Backtrace {
         &self.backtrace
     }
 
+    #[inline]
     fn backtrace_mut(&mut self) -> &mut Backtrace {
         &mut self.backtrace
     }
@@ -72,18 +77,12 @@ impl BoxedError2 {
         S: Into<String>,
     {
         fn inner(s: String, location: Location) -> BoxedError2 {
-            let display = s.clone();
-
-            let source = Box::new(StringError(s.into()));
-
             let mut error = BoxedError2 {
-                source,
+                source: Box::new(StringError(s.into())),
                 backtrace: Backtrace::new(),
             };
 
-            error
-                .backtrace_mut()
-                .push_error(*BOXED_TYPE_NAME, display, location);
+            error.push_error(location);
 
             error
         }
@@ -105,27 +104,23 @@ impl BoxedError2 {
     where
         T: Error + Send + Sync + 'static,
     {
-        let source_type_name = any::type_name::<T>();
+        if (&source as &(dyn Error + Send + Sync)).is::<BoxedError2>() {
+            let mut e =
+                <dyn Error + Send + Sync>::downcast::<BoxedError2>(Box::new(source)).unwrap();
 
-        match <dyn Error + Send + Sync>::downcast::<BoxedError2>(Box::new(source)) {
-            Ok(mut e) => {
-                e.backtrace_mut().push_location(location);
-                *e
-            }
-            Err(source) => {
-                let display = source.to_string();
+            e.backtrace_mut().push_location(location);
+            *e
+        } else {
+            let backtrace = Backtrace::with_head(&source);
 
-                let mut error = BoxedError2 {
-                    source,
-                    backtrace: Backtrace::with_head(source_type_name, display.clone()),
-                };
+            let mut error = BoxedError2 {
+                source: Box::new(source),
+                backtrace,
+            };
 
-                error
-                    .backtrace_mut()
-                    .push_error(*BOXED_TYPE_NAME, display, location);
+            error.push_error(location);
 
-                error
-            }
+            error
         }
     }
 
@@ -149,16 +144,14 @@ impl BoxedError2 {
             e.backtrace_mut().push_location(location);
             *e
         } else {
-            let display = source.to_string();
             let backtrace = source.backtrace_mut().take();
 
-            let source = Box::new(source);
+            let mut error = BoxedError2 {
+                source: Box::new(source),
+                backtrace,
+            };
 
-            let mut error = BoxedError2 { source, backtrace };
-
-            error
-                .backtrace_mut()
-                .push_error(*BOXED_TYPE_NAME, display, location);
+            error.push_error(location);
 
             error
         }

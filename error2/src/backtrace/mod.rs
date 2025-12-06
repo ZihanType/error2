@@ -1,7 +1,7 @@
 mod double_locations;
 mod message;
 
-use std::{fmt, mem};
+use std::{any, error::Error, fmt, mem};
 
 use self::{double_locations::DoubleLocations, message::Message};
 use crate::Location;
@@ -42,14 +42,25 @@ impl Backtrace {
     }
 
     #[doc(hidden)]
-    pub fn with_head(type_name: &'static str, display: String) -> Self {
-        Self {
-            entries: vec![BakctraceEntry::Message(Message::new(type_name, display))],
+    pub fn with_head<E: Error>(source: &E) -> Backtrace {
+        fn inner(type_name: &'static str, display: String) -> Backtrace {
+            Backtrace {
+                entries: vec![BakctraceEntry::Message(Message::new(type_name, display))],
+            }
         }
+
+        let type_name = any::type_name::<E>();
+        let display = source.to_string();
+
+        inner(type_name, display)
     }
 
-    #[doc(hidden)]
-    pub fn push_error(&mut self, type_name: &'static str, display: String, location: Location) {
+    pub(crate) fn push_error(
+        &mut self,
+        type_name: &'static str,
+        display: String,
+        location: Location,
+    ) {
         self.entries
             .push(BakctraceEntry::Message(Message::new(type_name, display)));
 

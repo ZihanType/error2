@@ -232,10 +232,7 @@ fn generate_struct(
             error_kind = ErrorKind::Std;
             source_type = ty.clone();
             backtrace_field_tokens = quote! {
-                backtrace: #crate_path::Backtrace::with_head(
-                    ::core::any::type_name_of_val(&source),
-                    ::std::string::ToString::to_string(&source)
-                ),
+                backtrace: #crate_path::Backtrace::with_head(&source),
             };
             assert_source_not_impl_error2 = quote! {
                 #crate_path::assert_not_impl_any!(#ty: #crate_path::Error2);
@@ -468,10 +465,7 @@ fn generate_enum(
                 error_kind = ErrorKind::Std;
                 source_type = ty.clone();
                 backtrace_field_tokens = quote! {
-                    backtrace: #crate_path::Backtrace::with_head(
-                        ::core::any::type_name_of_val(&source),
-                        ::std::string::ToString::to_string(&source)
-                    ),
+                    backtrace: #crate_path::Backtrace::with_head(&source),
                 };
                 assert_source_not_impl_error2 = quote! {
                     #crate_path::assert_not_impl_any!(#ty: #crate_path::Error2);
@@ -853,8 +847,6 @@ fn generate_context_def(
 
     quote_use! {
         # use core::convert::Into;
-        # use core::any::type_name_of_val;
-        # use std::string::ToString;
         # use #crate_path::{ErrorWrap, Error2, Location};
 
         #[derive(Debug, Clone, Copy)]
@@ -875,10 +867,7 @@ fn generate_context_def(
                     #source_field
                 };
 
-                let type_name = type_name_of_val(&error);
-                let display = ToString::to_string(&error);
-
-                Error2::backtrace_mut(&mut error).push_error(type_name, display, location);
+                Error2::push_error(&mut error, location);
 
                 error
             }
