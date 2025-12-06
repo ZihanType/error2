@@ -14,6 +14,7 @@ mod iter;
 mod location;
 mod macros;
 mod none;
+mod root_error;
 mod str_id;
 #[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
 #[cfg(feature = "stream")]
@@ -43,5 +44,6 @@ pub use self::{
     iter::AttachIter,
     location::Location,
     none::NoneError,
+    root_error::RootError,
 };
 pub(crate) use self::{backtrace::BakctraceEntry, str_id::StrId};

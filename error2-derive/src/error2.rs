@@ -785,57 +785,7 @@ fn generate_context_def(
         }
     };
 
-    let fail_methods_impl_generics = {
-        let mut impl_generics = impl_generics.to_token_stream().to_string();
-
-        match impl_generics.find('<') {
-            Some(pos) => {
-                impl_generics.insert_str(pos + 1, "__T, ");
-                TokenStream::from_str(&impl_generics).unwrap()
-            }
-            _ => quote! { <__T> },
-        }
-    };
-
     let where_clause = all_inferred_bounds.augment_where_clause(where_clause.cloned());
-
-    let root_error_methods = if !error_kind.is_root() {
-        quote! {}
-    } else {
-        quote_use! {
-            # use core::result::Result;
-            # use #crate_path::{ErrorWrap, NoneError, Location};
-
-            impl #context_generics #context_ident #context_generics {
-                #[inline]
-                #[must_use]
-                #[track_caller]
-                #[allow(dead_code)]
-                #context_vis fn build #impl_generics (self) -> #type_ident #ty_generics #where_clause {
-                    Self::build_with_location(self, Location::caller())
-                }
-
-                #[inline]
-                #[must_use]
-                #context_vis fn build_with_location #impl_generics (self, location: Location) -> #type_ident #ty_generics #where_clause {
-                    <Self as ErrorWrap < NoneError, #type_ident #ty_generics > >::wrap(self, NoneError, location)
-                }
-
-                #[inline]
-                #[track_caller]
-                #[allow(dead_code)]
-                #context_vis fn fail #fail_methods_impl_generics (self) -> Result<__T, #type_ident #ty_generics> #where_clause {
-                    Self::fail_with_location(self, Location::caller())
-                }
-
-                #[inline]
-                #[allow(dead_code)]
-                #context_vis fn fail_with_location #fail_methods_impl_generics (self, location: Location) -> Result<__T, #type_ident #ty_generics> #where_clause {
-                    Result::Err(self.build_with_location(location))
-                }
-            }
-        }
-    };
 
     let source_field = if error_kind.is_root() {
         quote! {}
@@ -851,8 +801,6 @@ fn generate_context_def(
 
         #[derive(Debug, Clone, Copy)]
         #context_vis struct #context_ident #context_generics #context_struct_body
-
-        #root_error_methods
 
         impl #additional_impl_generics ErrorWrap < #source_type, #type_ident #ty_generics > for #context_ident #context_generics #where_clause {
             #[allow(unused_variables)]

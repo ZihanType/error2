@@ -160,32 +160,6 @@ impl BoxedError2 {
 
 pub struct ViaNone<S: Into<String>>(pub S);
 
-impl<S: Into<String>> ViaNone<S> {
-    #[inline]
-    #[must_use]
-    #[track_caller]
-    pub fn build(self) -> BoxedError2 {
-        self.build_with_location(Location::caller())
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn build_with_location(self, location: Location) -> BoxedError2 {
-        <Self as ErrorWrap<NoneError, BoxedError2>>::wrap(self, NoneError, location)
-    }
-
-    #[inline]
-    #[track_caller]
-    pub fn fail<T>(self) -> Result<T, BoxedError2> {
-        self.fail_with_location(Location::caller())
-    }
-
-    #[inline]
-    pub fn fail_with_location<T>(self, location: Location) -> Result<T, BoxedError2> {
-        Err(self.build_with_location(location))
-    }
-}
-
 impl<S> ErrorWrap<NoneError, BoxedError2> for ViaNone<S>
 where
     S: Into<String>,
