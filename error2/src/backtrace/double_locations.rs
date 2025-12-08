@@ -6,24 +6,26 @@ pub(crate) struct DoubleLocations([Location; 2]);
 
 impl DoubleLocations {
     pub(super) const fn new(location: Location) -> Self {
+        debug_assert!(!location.is_uninit());
         Self([location, Location::uninit()])
     }
 
     pub(super) const fn is_full(&self) -> bool {
-        !self.0[0].is_uninit() && !self.0[1].is_uninit()
+        let [first, second] = &self.0;
+        debug_assert!(!first.is_uninit());
+
+        !second.is_uninit()
     }
 
     pub(super) const fn push(&mut self, location: Location) -> Option<Location> {
-        match &mut self.0 {
-            [first, _] if first.is_uninit() => {
-                *first = location;
-                None
-            }
-            [_, second] if second.is_uninit() => {
-                *second = location;
-                None
-            }
-            [_, _] => Some(location),
+        let [first, second] = &mut self.0;
+        debug_assert!(!first.is_uninit());
+
+        if second.is_uninit() {
+            *second = location;
+            None
+        } else {
+            Some(location)
         }
     }
 

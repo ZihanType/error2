@@ -39,7 +39,7 @@ pub fn extract_error_stack(e: &dyn Error2) -> Box<[Box<str>]> {
                 BakctraceEntry::Locations(dl) => {
                     let [first, second] = dl.inner();
 
-                    // first must initialized
+                    debug_assert!(!first.is_uninit());
                     locations.push(first);
 
                     if !second.is_uninit() {
