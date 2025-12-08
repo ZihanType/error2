@@ -2,27 +2,97 @@ use std::{error::Error, fmt};
 
 use crate::{Backtrace, Error2, ErrorWrap, Location, NoneError};
 
-struct StringError(Box<str>);
+struct StringError {
+    s: Box<str>,
+    backtrace: Backtrace,
+}
 
 impl fmt::Display for StringError {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
+        fmt::Display::fmt(&self.s, f)
     }
 }
 
 impl fmt::Debug for StringError {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.0, f)
+        fmt::Debug::fmt(&self.s, f)
     }
 }
 
 impl Error for StringError {}
 
-pub struct BoxedError2 {
-    source: Box<dyn Error + Send + Sync + 'static>,
+impl Error2 for StringError {
+    #[inline]
+    fn backtrace(&self) -> &Backtrace {
+        &self.backtrace
+    }
+
+    #[inline]
+    fn backtrace_mut(&mut self) -> &mut Backtrace {
+        &mut self.backtrace
+    }
+}
+
+struct StdErr<T> {
+    source: T,
     backtrace: Backtrace,
+}
+
+impl<T: fmt::Display> fmt::Display for StdErr<T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.source, f)
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for StdErr<T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.source, f)
+    }
+}
+
+impl<T: Error> Error for StdErr<T> {
+    #[inline]
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Error::source(&self.source)
+    }
+}
+
+impl<T: Error> Error2 for StdErr<T> {
+    #[inline]
+    fn backtrace(&self) -> &Backtrace {
+        &self.backtrace
+    }
+
+    #[inline]
+    fn backtrace_mut(&mut self) -> &mut Backtrace {
+        &mut self.backtrace
+    }
+}
+
+pub struct BoxedError2 {
+    source: Box<dyn Error2 + Send + Sync + 'static>,
+}
+
+impl BoxedError2 {
+    #[inline]
+    const fn as_err(&self) -> &(dyn Error + Send + Sync + 'static) {
+        &*self.source
+    }
+
+    #[inline]
+    pub fn is<T: Error + 'static>(&self) -> bool {
+        let err = self.as_err();
+
+        if err.is::<StdErr<T>>() {
+            true
+        } else {
+            err.is::<T>()
+        }
+    }
 }
 
 impl fmt::Display for BoxedError2 {
@@ -42,7 +112,7 @@ impl fmt::Debug for BoxedError2 {
 impl Error for BoxedError2 {
     #[inline]
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        if self.source.is::<StringError>() {
+        if self.is::<StringError>() {
             None
         } else {
             Some(&*self.source)
@@ -53,12 +123,12 @@ impl Error for BoxedError2 {
 impl Error2 for BoxedError2 {
     #[inline]
     fn backtrace(&self) -> &Backtrace {
-        &self.backtrace
+        self.source.backtrace()
     }
 
     #[inline]
     fn backtrace_mut(&mut self) -> &mut Backtrace {
-        &mut self.backtrace
+        self.source.backtrace_mut()
     }
 }
 
@@ -78,8 +148,10 @@ impl BoxedError2 {
     {
         fn inner(s: String, location: Location) -> BoxedError2 {
             let mut error = BoxedError2 {
-                source: Box::new(StringError(s.into())),
-                backtrace: Backtrace::new(),
+                source: Box::new(StringError {
+                    s: s.into(),
+                    backtrace: Backtrace::new(),
+                }),
             };
 
             error.push_error(location);
@@ -114,8 +186,7 @@ impl BoxedError2 {
             let backtrace = Backtrace::with_head(&source);
 
             let mut error = BoxedError2 {
-                source: Box::new(source),
-                backtrace,
+                source: Box::new(StdErr { source, backtrace }),
             };
 
             error.push_error(location);
@@ -133,7 +204,7 @@ impl BoxedError2 {
         Self::from_err2_with_location(source, Location::caller())
     }
 
-    pub fn from_err2_with_location<T>(mut source: T, location: Location) -> BoxedError2
+    pub fn from_err2_with_location<T>(source: T, location: Location) -> BoxedError2
     where
         T: Error2 + Send + Sync + 'static,
     {
@@ -144,11 +215,8 @@ impl BoxedError2 {
             e.backtrace_mut().push_location(location);
             *e
         } else {
-            let backtrace = source.backtrace_mut().take();
-
             let mut error = BoxedError2 {
                 source: Box::new(source),
-                backtrace,
             };
 
             error.push_error(location);

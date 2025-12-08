@@ -28,6 +28,7 @@ pub struct Backtrace {
 }
 
 impl fmt::Debug for Backtrace {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Backtrace {{ ... }}")
     }
@@ -35,7 +36,8 @@ impl fmt::Debug for Backtrace {
 
 impl Backtrace {
     #[doc(hidden)]
-    pub fn new() -> Self {
+    #[inline]
+    pub const fn new() -> Self {
         Self {
             entries: Vec::new(),
         }
@@ -102,13 +104,6 @@ impl Backtrace {
                 self.entries
                     .push(BakctraceEntry::Locations(DoubleLocations::new(location)));
             }
-        }
-    }
-
-    #[inline]
-    pub(crate) fn take(&mut self) -> Self {
-        Self {
-            entries: mem::take(&mut self.entries),
         }
     }
 }
