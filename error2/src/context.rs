@@ -1,14 +1,15 @@
 use std::error::Error;
 
-use crate::{Error2, ErrorWrap, Location, NoneError};
+use crate::{Error2, ErrorFullWrap, Location, NoneError};
 
-pub trait Context<T, Source, Middle, Target, C>: Sized
+pub trait Context<T, M, Source, Middle, Target, C>: Sized
 where
     Source: Error + Into<Middle>,
     Middle: Error,
     Target: Error2,
-    C: ErrorWrap<Middle, Target>,
+    C: ErrorFullWrap<M, Source, Middle, Target>,
 {
+    #[inline]
     #[track_caller]
     fn context(self, context: C) -> Result<T, Target> {
         self.context_and_location(context, Location::caller())
@@ -16,6 +17,7 @@ where
 
     fn context_and_location(self, context: C, location: Location) -> Result<T, Target>;
 
+    #[inline]
     #[track_caller]
     fn with_context<F>(self, f: F) -> Result<T, Target>
     where
@@ -29,32 +31,32 @@ where
         F: FnOnce() -> C;
 }
 
-impl<T, Source, Middle, Target, C> Context<T, Source, Middle, Target, C> for Source
+impl<T, M, Source, Middle, Target, C> Context<T, M, Source, Middle, Target, C> for Source
 where
     Source: Error + Into<Middle>,
     Middle: Error,
     Target: Error2,
-    C: ErrorWrap<Middle, Target>,
+    C: ErrorFullWrap<M, Source, Middle, Target>,
 {
+    #[inline]
     fn context_and_location(self, context: C, location: Location) -> Result<T, Target> {
-        let middle: Middle = self.into();
-        Err(context.wrap(middle, location))
+        Err(context.full_wrap(self, location))
     }
 
+    #[inline]
     fn with_context_and_location<F>(self, f: F, location: Location) -> Result<T, Target>
     where
         F: FnOnce() -> C,
     {
         let context = f();
-        let middle: Middle = self.into();
-        Err(context.wrap(middle, location))
+        Err(context.full_wrap(self, location))
     }
 }
 
-impl<T, Target, C> Context<T, NoneError, NoneError, Target, C> for Option<T>
+impl<T, M, Target, C> Context<T, M, NoneError, NoneError, Target, C> for Option<T>
 where
     Target: Error2,
-    C: ErrorWrap<NoneError, Target>,
+    C: ErrorFullWrap<M, NoneError, NoneError, Target>,
 {
     #[inline]
     fn context_and_location(self, context: C, location: Location) -> Result<T, Target> {
@@ -76,12 +78,12 @@ where
     }
 }
 
-impl<T, Source, Middle, Target, C> Context<T, Source, Middle, Target, C> for Result<T, Source>
+impl<T, M, Source, Middle, Target, C> Context<T, M, Source, Middle, Target, C> for Result<T, Source>
 where
     Source: Error + Into<Middle>,
     Middle: Error,
     Target: Error2,
-    C: ErrorWrap<Middle, Target>,
+    C: ErrorFullWrap<M, Source, Middle, Target>,
 {
     #[inline]
     fn context_and_location(self, context: C, location: Location) -> Result<T, Target> {

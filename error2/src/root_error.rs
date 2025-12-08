@@ -1,6 +1,8 @@
-use crate::{Error2, ErrorWrap, Location, NoneError};
+use crate::{Error2, ErrorFullWrap, Location, NoneError};
 
-pub trait RootError<Target: Error2>: ErrorWrap<NoneError, Target> + Sized {
+pub trait RootError<M, Target: Error2>:
+    ErrorFullWrap<M, NoneError, NoneError, Target> + Sized
+{
     #[inline]
     #[must_use]
     #[track_caller]
@@ -11,7 +13,9 @@ pub trait RootError<Target: Error2>: ErrorWrap<NoneError, Target> + Sized {
     #[inline]
     #[must_use]
     fn build_with_location(self, location: Location) -> Target {
-        <Self as ErrorWrap<NoneError, Target>>::wrap(self, NoneError, location)
+        <Self as ErrorFullWrap<M, NoneError, NoneError, Target>>::full_wrap(
+            self, NoneError, location,
+        )
     }
 
     #[inline]
@@ -26,9 +30,9 @@ pub trait RootError<Target: Error2>: ErrorWrap<NoneError, Target> + Sized {
     }
 }
 
-impl<Target, C> RootError<Target> for C
+impl<M, Target, C> RootError<M, Target> for C
 where
     Target: Error2,
-    C: ErrorWrap<NoneError, Target>,
+    C: ErrorFullWrap<M, NoneError, NoneError, Target>,
 {
 }

@@ -38,7 +38,7 @@ pub use self::{
     backtrace::Backtrace,
     boxed::{BoxedError2, ViaErr2, ViaNone, ViaStd},
     context::Context,
-    error_wrap::ErrorWrap,
+    error_wrap::{ErrorFullWrap, ErrorHalfWrap},
     error2::Error2,
     extract::{extract_error_message, extract_error_stack},
     iter::AttachIter,
@@ -47,3 +47,11 @@ pub use self::{
     root_error::RootError,
 };
 pub(crate) use self::{backtrace::BakctraceEntry, str_id::StrId};
+
+pub(crate) mod private {
+    #[derive(Debug, Clone, Copy)]
+    pub enum ViaHalf {}
+
+    #[derive(Debug, Clone, Copy)]
+    pub enum ViaFull {}
+}

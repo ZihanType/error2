@@ -192,7 +192,7 @@ fn generate_struct(
     }
 
     let error_kind: ErrorKind;
-    let source_type: Type;
+    let middle_type: Type;
     let backtrace_field_tokens: TokenStream;
     let assert_source_not_impl_error2: TokenStream;
 
@@ -207,7 +207,7 @@ fn generate_struct(
         // root error
         (None, Some(_)) => {
             error_kind = ErrorKind::Root;
-            source_type = parse_quote! { #crate_path::NoneError };
+            middle_type = parse_quote! { #crate_path::NoneError };
             backtrace_field_tokens = quote! {
                 backtrace: #crate_path::Backtrace::new(),
             };
@@ -218,7 +218,7 @@ fn generate_struct(
             let ty = &source_field.ty;
 
             error_kind = ErrorKind::Err2;
-            source_type = ty.clone();
+            middle_type = ty.clone();
             backtrace_field_tokens = quote! {};
             assert_source_not_impl_error2 = quote! {};
             if scope.intersects(ty) {
@@ -230,9 +230,9 @@ fn generate_struct(
             let ty = &source_field.ty;
 
             error_kind = ErrorKind::Std;
-            source_type = ty.clone();
+            middle_type = ty.clone();
             backtrace_field_tokens = quote! {
-                backtrace: #crate_path::Backtrace::with_head(&source),
+                backtrace: #crate_path::Backtrace::with_head(&middle),
             };
             assert_source_not_impl_error2 = quote! {
                 #crate_path::assert_not_impl_any!(#ty: #crate_path::Error2);
@@ -279,7 +279,7 @@ fn generate_struct(
         no_source_no_backtrace_field_generics,
         no_source_no_backtrace_inferred_bounds.merge(&error_inferred_bounds),
         generics,
-        source_type,
+        middle_type,
         backtrace_field_tokens,
         assert_source_not_impl_error2,
     );
@@ -424,7 +424,7 @@ fn generate_enum(
         }
 
         let error_kind: ErrorKind;
-        let source_type: Type;
+        let middle_type: Type;
         let backtrace_field_tokens: TokenStream;
         let assert_source_not_impl_error2: TokenStream;
 
@@ -440,7 +440,7 @@ fn generate_enum(
             // root error
             (None, Some(_)) => {
                 error_kind = ErrorKind::Root;
-                source_type = parse_quote! { #crate_path::NoneError };
+                middle_type = parse_quote! { #crate_path::NoneError };
                 backtrace_field_tokens = quote! {
                     backtrace: #crate_path::Backtrace::new(),
                 };
@@ -451,7 +451,7 @@ fn generate_enum(
                 let ty = &source_field.ty;
 
                 error_kind = ErrorKind::Err2;
-                source_type = ty.clone();
+                middle_type = ty.clone();
                 backtrace_field_tokens = quote! {};
                 assert_source_not_impl_error2 = quote! {};
                 if scope.intersects(ty) {
@@ -463,9 +463,9 @@ fn generate_enum(
                 let ty = &source_field.ty;
 
                 error_kind = ErrorKind::Std;
-                source_type = ty.clone();
+                middle_type = ty.clone();
                 backtrace_field_tokens = quote! {
-                    backtrace: #crate_path::Backtrace::with_head(&source),
+                    backtrace: #crate_path::Backtrace::with_head(&middle),
                 };
                 assert_source_not_impl_error2 = quote! {
                     #crate_path::assert_not_impl_any!(#ty: #crate_path::Error2);
@@ -480,7 +480,7 @@ fn generate_enum(
             no_source_no_backtrace_field_idents,
             no_source_no_backtrace_field_generics,
             no_source_no_backtrace_inferred_bounds,
-            source_type,
+            middle_type,
             backtrace_field_tokens,
             assert_source_not_impl_error2,
             variant_display,
@@ -501,7 +501,7 @@ fn generate_enum(
             no_source_no_backtrace_field_idents,
             no_source_no_backtrace_field_generics,
             no_source_no_backtrace_inferred_bounds,
-            source_type,
+            middle_type,
             backtrace_field_tokens,
             assert_source_not_impl_error2,
             variant_display,
@@ -532,7 +532,7 @@ fn generate_enum(
             no_source_no_backtrace_field_generics,
             no_source_no_backtrace_inferred_bounds.merge(&error_inferred_bounds),
             generics,
-            source_type,
+            middle_type,
             backtrace_field_tokens,
             assert_source_not_impl_error2,
             variant_display,
@@ -637,7 +637,7 @@ fn generate_variant(
     no_source_no_backtrace_field_generics: Vec<Ident>,
     all_inferred_bounds: InferredBounds,
     generics: &Generics,
-    source_type: Type,
+    middle_type: Type,
     backtrace_field_tokens: TokenStream,
     assert_source_not_impl_error2: TokenStream,
     display_tokens: Option<TokenStream>,
@@ -653,7 +653,7 @@ fn generate_variant(
         no_source_no_backtrace_field_generics,
         all_inferred_bounds,
         generics,
-        source_type,
+        middle_type,
         backtrace_field_tokens,
         assert_source_not_impl_error2,
     );
@@ -711,7 +711,7 @@ struct VariantInput<'a> {
     no_source_no_backtrace_field_idents: Vec<&'a Ident>,
     no_source_no_backtrace_field_generics: Vec<Ident>,
     no_source_no_backtrace_inferred_bounds: InferredBounds,
-    source_type: Type,
+    middle_type: Type,
     backtrace_field_tokens: TokenStream,
     assert_source_not_impl_error2: TokenStream,
     variant_display: Option<TokenStream>,
@@ -737,7 +737,7 @@ fn generate_context_def(
     no_source_no_backtrace_field_generics: Vec<Ident>,
     all_inferred_bounds: InferredBounds,
     generics: &Generics,
-    source_type: Type,
+    middle_type: Type,
     backtrace_field_tokens: TokenStream,
     assert_source_not_impl_error2: TokenStream,
 ) -> TokenStream {
@@ -791,20 +791,20 @@ fn generate_context_def(
         quote! {}
     } else {
         quote! {
-            source,
+            source: middle,
         }
     };
 
     quote_use! {
         # use core::convert::Into;
-        # use #crate_path::{ErrorWrap, Error2, Location};
+        # use #crate_path::{ErrorHalfWrap, Error2, Location};
 
         #[derive(Debug, Clone, Copy)]
         #context_vis struct #context_ident #context_generics #context_struct_body
 
-        impl #additional_impl_generics ErrorWrap < #source_type, #type_ident #ty_generics > for #context_ident #context_generics #where_clause {
+        impl #additional_impl_generics ErrorHalfWrap < #middle_type, #type_ident #ty_generics > for #context_ident #context_generics #where_clause {
             #[allow(unused_variables)]
-            fn wrap(self, source: #source_type, location: Location) -> #type_ident #ty_generics {
+            fn half_wrap(self, middle: #middle_type, location: Location) -> #type_ident #ty_generics {
                 #assert_source_not_impl_error2
 
                 let mut error = #type_path {

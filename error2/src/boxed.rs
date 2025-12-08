@@ -1,6 +1,6 @@
 use std::{error::Error, fmt};
 
-use crate::{Backtrace, Error2, ErrorWrap, Location, NoneError};
+use crate::{Backtrace, Error2, ErrorFullWrap, Location, NoneError, private};
 
 struct StringError {
     s: Box<str>,
@@ -228,36 +228,36 @@ impl BoxedError2 {
 
 pub struct ViaNone<S: Into<String>>(pub S);
 
-impl<S> ErrorWrap<NoneError, BoxedError2> for ViaNone<S>
+impl<S> ErrorFullWrap<private::ViaFull, NoneError, NoneError, BoxedError2> for ViaNone<S>
 where
     S: Into<String>,
 {
     #[inline]
-    fn wrap(self, _source: NoneError, location: Location) -> BoxedError2 {
+    fn full_wrap(self, _source: NoneError, location: Location) -> BoxedError2 {
         BoxedError2::from_msg_with_location(self.0, location)
     }
 }
 
 pub struct ViaStd;
 
-impl<T> ErrorWrap<T, BoxedError2> for ViaStd
+impl<T> ErrorFullWrap<private::ViaFull, T, T, BoxedError2> for ViaStd
 where
     T: Error + Send + Sync + 'static,
 {
     #[inline]
-    fn wrap(self, source: T, location: Location) -> BoxedError2 {
+    fn full_wrap(self, source: T, location: Location) -> BoxedError2 {
         BoxedError2::from_std_with_location(source, location)
     }
 }
 
 pub struct ViaErr2;
 
-impl<T> ErrorWrap<T, BoxedError2> for ViaErr2
+impl<T> ErrorFullWrap<private::ViaFull, T, T, BoxedError2> for ViaErr2
 where
     T: Error2 + Send + Sync + 'static,
 {
     #[inline]
-    fn wrap(self, source: T, location: Location) -> BoxedError2 {
+    fn full_wrap(self, source: T, location: Location) -> BoxedError2 {
         BoxedError2::from_err2_with_location(source, location)
     }
 }
