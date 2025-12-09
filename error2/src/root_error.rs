@@ -1,8 +1,6 @@
-use crate::{Error2, Location, NoneError, SourceToTarget};
+use crate::{Error2, Location, SourceToTarget};
 
-pub trait RootError<M, Target: Error2>:
-    SourceToTarget<M, NoneError, NoneError, Target> + Sized
-{
+pub trait RootError<M, Target: Error2>: SourceToTarget<M, (), (), Target> + Sized {
     #[inline]
     #[must_use]
     #[track_caller]
@@ -13,9 +11,7 @@ pub trait RootError<M, Target: Error2>:
     #[inline]
     #[must_use]
     fn build_with_location(self, location: Location) -> Target {
-        <Self as SourceToTarget<M, NoneError, NoneError, Target>>::source_to_target(
-            self, NoneError, location,
-        )
+        <Self as SourceToTarget<M, (), (), Target>>::source_to_target(self, (), location)
     }
 
     #[inline]
@@ -33,6 +29,6 @@ pub trait RootError<M, Target: Error2>:
 impl<M, Target, C> RootError<M, Target> for C
 where
     Target: Error2,
-    C: SourceToTarget<M, NoneError, NoneError, Target>,
+    C: SourceToTarget<M, (), (), Target>,
 {
 }

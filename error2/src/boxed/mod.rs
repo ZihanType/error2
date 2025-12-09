@@ -7,7 +7,7 @@ use std::{
 };
 
 use self::{root_err::RootErr, std_err::StdErr};
-use crate::{Backtrace, Error2, Location, NoneError, SourceToTarget, private};
+use crate::{Backtrace, Error2, Location, SourceToTarget, private};
 
 pub struct BoxedError2 {
     source: Box<dyn Error2 + Send + Sync + 'static>,
@@ -164,12 +164,12 @@ pub struct ViaRoot<M>(pub M)
 where
     M: Display + Debug + Send + Sync + 'static;
 
-impl<M> SourceToTarget<private::ViaFull, NoneError, NoneError, BoxedError2> for ViaRoot<M>
+impl<M> SourceToTarget<private::ViaFull, (), (), BoxedError2> for ViaRoot<M>
 where
     M: Display + Debug + Send + Sync + 'static,
 {
     #[inline]
-    fn source_to_target(self, _source: NoneError, location: Location) -> BoxedError2 {
+    fn source_to_target(self, _source: (), location: Location) -> BoxedError2 {
         BoxedError2::from_root_with_location(self.0, location)
     }
 }

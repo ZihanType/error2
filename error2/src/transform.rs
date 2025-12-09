@@ -1,29 +1,19 @@
-use std::error::Error;
+use crate::{Location, private};
 
-use crate::{Error2, Location, private};
-
-pub trait MiddleToTarget<Middle, Target>
-where
-    Middle: Error, // at least implement `Error` trait
-    Target: Error2,
-{
+pub trait MiddleToTarget<Middle, Target> {
     fn middle_to_target(self, middle: Middle, location: Location) -> Target;
 }
 
 pub trait SourceToTarget<M, Source, Middle, Target>
 where
-    Source: Error + Into<Middle>, // at least implement `Error` trait
-    Middle: Error,                // at least implement `Error` trait
-    Target: Error2,
+    Source: Into<Middle>,
 {
     fn source_to_target(self, source: Source, location: Location) -> Target;
 }
 
 impl<Source, Middle, Target, C> SourceToTarget<private::ViaPartial, Source, Middle, Target> for C
 where
-    Source: Error + Into<Middle>,
-    Middle: Error,
-    Target: Error2,
+    Source: Into<Middle>,
     C: MiddleToTarget<Middle, Target>,
 {
     #[inline]

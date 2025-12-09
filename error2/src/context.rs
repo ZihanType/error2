@@ -1,12 +1,10 @@
 use std::error::Error;
 
-use crate::{Error2, Location, NoneError, SourceToTarget};
+use crate::{Error2, Location, SourceToTarget};
 
 pub trait Context<T, M, Source, Middle, Target, C>: Sized
 where
-    Source: Error + Into<Middle>,
-    Middle: Error,
-    Target: Error2,
+    Source: Into<Middle>,
     C: SourceToTarget<M, Source, Middle, Target>,
 {
     #[inline]
@@ -53,16 +51,16 @@ where
     }
 }
 
-impl<T, M, Target, C> Context<T, M, NoneError, NoneError, Target, C> for Option<T>
+impl<T, M, Target, C> Context<T, M, (), (), Target, C> for Option<T>
 where
     Target: Error2,
-    C: SourceToTarget<M, NoneError, NoneError, Target>,
+    C: SourceToTarget<M, (), (), Target>,
 {
     #[inline]
     fn context_and_location(self, context: C, location: Location) -> Result<T, Target> {
         match self {
             Some(t) => Ok(t),
-            None => NoneError.context_and_location(context, location),
+            None => Err(context.source_to_target((), location)),
         }
     }
 
@@ -73,7 +71,10 @@ where
     {
         match self {
             Some(t) => Ok(t),
-            None => NoneError.with_context_and_location(f, location),
+            None => {
+                let context = f();
+                Err(context.source_to_target((), location))
+            }
         }
     }
 }
