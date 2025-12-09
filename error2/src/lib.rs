@@ -36,7 +36,7 @@ pub use self::stream::AttachStream;
 pub use self::{
     attach::Attach,
     backtrace::Backtrace,
-    boxed::{BoxedError2, ViaErr2, ViaNone, ViaStd},
+    boxed::{BoxedError2, ViaErr2, ViaRoot, ViaStd},
     context::Context,
     error_wrap::{ErrorFullWrap, ErrorHalfWrap},
     error2::Error2,

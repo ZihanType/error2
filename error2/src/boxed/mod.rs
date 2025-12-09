@@ -1,77 +1,13 @@
-use std::{error::Error, fmt};
+mod root_err;
+mod std_err;
 
+use std::{
+    error::Error,
+    fmt::{self, Debug, Display, Formatter},
+};
+
+use self::{root_err::RootErr, std_err::StdErr};
 use crate::{Backtrace, Error2, ErrorFullWrap, Location, NoneError, private};
-
-struct StringError {
-    s: Box<str>,
-    backtrace: Backtrace,
-}
-
-impl fmt::Display for StringError {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.s, f)
-    }
-}
-
-impl fmt::Debug for StringError {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.s, f)
-    }
-}
-
-impl Error for StringError {}
-
-impl Error2 for StringError {
-    #[inline]
-    fn backtrace(&self) -> &Backtrace {
-        &self.backtrace
-    }
-
-    #[inline]
-    fn backtrace_mut(&mut self) -> &mut Backtrace {
-        &mut self.backtrace
-    }
-}
-
-struct StdErr<T> {
-    source: T,
-    backtrace: Backtrace,
-}
-
-impl<T: fmt::Display> fmt::Display for StdErr<T> {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.source, f)
-    }
-}
-
-impl<T: fmt::Debug> fmt::Debug for StdErr<T> {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.source, f)
-    }
-}
-
-impl<T: Error> Error for StdErr<T> {
-    #[inline]
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Error::source(&self.source)
-    }
-}
-
-impl<T: Error> Error2 for StdErr<T> {
-    #[inline]
-    fn backtrace(&self) -> &Backtrace {
-        &self.backtrace
-    }
-
-    #[inline]
-    fn backtrace_mut(&mut self) -> &mut Backtrace {
-        &mut self.backtrace
-    }
-}
 
 pub struct BoxedError2 {
     source: Box<dyn Error2 + Send + Sync + 'static>,
@@ -79,40 +15,48 @@ pub struct BoxedError2 {
 
 impl BoxedError2 {
     #[inline]
-    const fn as_err(&self) -> &(dyn Error + Send + Sync + 'static) {
+    const fn source(&self) -> &(dyn Error + Send + Sync + 'static) {
         &*self.source
     }
 
     #[inline]
+    pub fn is_root(&self) -> bool {
+        self.source().is::<RootErr>()
+    }
+
+    #[inline]
     pub fn is<T: Error + 'static>(&self) -> bool {
-        let err = self.as_err();
+        let source = self.source();
 
-        if err.is::<StdErr<T>>() {
-            true
+        source.is::<StdErr<T>>() || source.is::<T>()
+    }
+}
+
+impl Display for BoxedError2 {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Display::fmt(&self.source, f)
+    }
+}
+
+impl Debug for BoxedError2 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            Debug::fmt(&self.source, f)
         } else {
-            err.is::<T>()
+            Display::fmt(&self.source, f)?;
+            write!(f, "\n\n")?;
+
+            let m = crate::extract_error_message(self);
+            Display::fmt(&m, f)
         }
-    }
-}
-
-impl fmt::Display for BoxedError2 {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.source, f)
-    }
-}
-
-impl fmt::Debug for BoxedError2 {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.source, f)
     }
 }
 
 impl Error for BoxedError2 {
     #[inline]
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        if self.is::<StringError>() {
+        if self.is_root() {
             None
         } else {
             Some(&*self.source)
@@ -135,32 +79,24 @@ impl Error2 for BoxedError2 {
 impl BoxedError2 {
     #[track_caller]
     #[inline]
-    pub fn from_msg<S>(s: S) -> BoxedError2
+    pub fn from_root<R>(root: R) -> BoxedError2
     where
-        S: Into<String>,
+        R: Display + Debug + Send + Sync + 'static,
     {
-        Self::from_msg_with_location(s, Location::caller())
+        Self::from_root_with_location(root, Location::caller())
     }
 
-    pub fn from_msg_with_location<S>(s: S, location: Location) -> BoxedError2
+    pub fn from_root_with_location<R>(root: R, location: Location) -> BoxedError2
     where
-        S: Into<String>,
+        R: Display + Debug + Send + Sync + 'static,
     {
-        fn inner(s: String, location: Location) -> BoxedError2 {
-            let mut error = BoxedError2 {
-                source: Box::new(StringError {
-                    s: s.into(),
-                    backtrace: Backtrace::new(),
-                }),
-            };
+        let mut error = BoxedError2 {
+            source: Box::new(RootErr::new(root)),
+        };
 
-            error.push_error(location);
+        error.push_error(location);
 
-            error
-        }
-
-        let s: String = s.into();
-        inner(s, location)
+        error
     }
 
     #[track_caller]
@@ -183,10 +119,8 @@ impl BoxedError2 {
             e.backtrace_mut().push_location(location);
             *e
         } else {
-            let backtrace = Backtrace::with_head(&source);
-
             let mut error = BoxedError2 {
-                source: Box::new(StdErr { source, backtrace }),
+                source: Box::new(StdErr::new(source)),
             };
 
             error.push_error(location);
@@ -226,15 +160,17 @@ impl BoxedError2 {
     }
 }
 
-pub struct ViaNone<S: Into<String>>(pub S);
-
-impl<S> ErrorFullWrap<private::ViaFull, NoneError, NoneError, BoxedError2> for ViaNone<S>
+pub struct ViaRoot<M>(pub M)
 where
-    S: Into<String>,
+    M: Display + Debug + Send + Sync + 'static;
+
+impl<M> ErrorFullWrap<private::ViaFull, NoneError, NoneError, BoxedError2> for ViaRoot<M>
+where
+    M: Display + Debug + Send + Sync + 'static,
 {
     #[inline]
     fn full_wrap(self, _source: NoneError, location: Location) -> BoxedError2 {
-        BoxedError2::from_msg_with_location(self.0, location)
+        BoxedError2::from_root_with_location(self.0, location)
     }
 }
 
