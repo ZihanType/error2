@@ -797,14 +797,14 @@ fn generate_context_def(
 
     quote_use! {
         # use core::convert::Into;
-        # use #crate_path::{ErrorHalfWrap, Error2, Location};
+        # use #crate_path::{MiddleToTarget, Error2, Location};
 
         #[derive(Debug, Clone, Copy)]
         #context_vis struct #context_ident #context_generics #context_struct_body
 
-        impl #additional_impl_generics ErrorHalfWrap < #middle_type, #type_ident #ty_generics > for #context_ident #context_generics #where_clause {
+        impl #additional_impl_generics MiddleToTarget < #middle_type, #type_ident #ty_generics > for #context_ident #context_generics #where_clause {
             #[allow(unused_variables)]
-            fn half_wrap(self, middle: #middle_type, location: Location) -> #type_ident #ty_generics {
+            fn middle_to_target(self, middle: #middle_type, location: Location) -> #type_ident #ty_generics {
                 #assert_source_not_impl_error2
 
                 let mut error = #type_path {

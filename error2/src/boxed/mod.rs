@@ -7,7 +7,7 @@ use std::{
 };
 
 use self::{root_err::RootErr, std_err::StdErr};
-use crate::{Backtrace, Error2, ErrorFullWrap, Location, NoneError, private};
+use crate::{Backtrace, Error2, Location, NoneError, SourceToTarget, private};
 
 pub struct BoxedError2 {
     source: Box<dyn Error2 + Send + Sync + 'static>,
@@ -164,36 +164,36 @@ pub struct ViaRoot<M>(pub M)
 where
     M: Display + Debug + Send + Sync + 'static;
 
-impl<M> ErrorFullWrap<private::ViaFull, NoneError, NoneError, BoxedError2> for ViaRoot<M>
+impl<M> SourceToTarget<private::ViaFull, NoneError, NoneError, BoxedError2> for ViaRoot<M>
 where
     M: Display + Debug + Send + Sync + 'static,
 {
     #[inline]
-    fn full_wrap(self, _source: NoneError, location: Location) -> BoxedError2 {
+    fn source_to_target(self, _source: NoneError, location: Location) -> BoxedError2 {
         BoxedError2::from_root_with_location(self.0, location)
     }
 }
 
 pub struct ViaStd;
 
-impl<T> ErrorFullWrap<private::ViaFull, T, T, BoxedError2> for ViaStd
+impl<T> SourceToTarget<private::ViaFull, T, T, BoxedError2> for ViaStd
 where
     T: Error + Send + Sync + 'static,
 {
     #[inline]
-    fn full_wrap(self, source: T, location: Location) -> BoxedError2 {
+    fn source_to_target(self, source: T, location: Location) -> BoxedError2 {
         BoxedError2::from_std_with_location(source, location)
     }
 }
 
 pub struct ViaErr2;
 
-impl<T> ErrorFullWrap<private::ViaFull, T, T, BoxedError2> for ViaErr2
+impl<T> SourceToTarget<private::ViaFull, T, T, BoxedError2> for ViaErr2
 where
     T: Error2 + Send + Sync + 'static,
 {
     #[inline]
-    fn full_wrap(self, source: T, location: Location) -> BoxedError2 {
+    fn source_to_target(self, source: T, location: Location) -> BoxedError2 {
         BoxedError2::from_err2_with_location(source, location)
     }
 }

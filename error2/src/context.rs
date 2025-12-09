@@ -1,13 +1,13 @@
 use std::error::Error;
 
-use crate::{Error2, ErrorFullWrap, Location, NoneError};
+use crate::{Error2, Location, NoneError, SourceToTarget};
 
 pub trait Context<T, M, Source, Middle, Target, C>: Sized
 where
     Source: Error + Into<Middle>,
     Middle: Error,
     Target: Error2,
-    C: ErrorFullWrap<M, Source, Middle, Target>,
+    C: SourceToTarget<M, Source, Middle, Target>,
 {
     #[inline]
     #[track_caller]
@@ -36,11 +36,11 @@ where
     Source: Error + Into<Middle>,
     Middle: Error,
     Target: Error2,
-    C: ErrorFullWrap<M, Source, Middle, Target>,
+    C: SourceToTarget<M, Source, Middle, Target>,
 {
     #[inline]
     fn context_and_location(self, context: C, location: Location) -> Result<T, Target> {
-        Err(context.full_wrap(self, location))
+        Err(context.source_to_target(self, location))
     }
 
     #[inline]
@@ -49,14 +49,14 @@ where
         F: FnOnce() -> C,
     {
         let context = f();
-        Err(context.full_wrap(self, location))
+        Err(context.source_to_target(self, location))
     }
 }
 
 impl<T, M, Target, C> Context<T, M, NoneError, NoneError, Target, C> for Option<T>
 where
     Target: Error2,
-    C: ErrorFullWrap<M, NoneError, NoneError, Target>,
+    C: SourceToTarget<M, NoneError, NoneError, Target>,
 {
     #[inline]
     fn context_and_location(self, context: C, location: Location) -> Result<T, Target> {
@@ -83,7 +83,7 @@ where
     Source: Error + Into<Middle>,
     Middle: Error,
     Target: Error2,
-    C: ErrorFullWrap<M, Source, Middle, Target>,
+    C: SourceToTarget<M, Source, Middle, Target>,
 {
     #[inline]
     fn context_and_location(self, context: C, location: Location) -> Result<T, Target> {
