@@ -20,7 +20,7 @@ pub fn extract_error_stack(e: &dyn Error2) -> Box<[Box<str>]> {
                 return;
             }
 
-            for location in locations.iter().rev() {
+            for location in locations.iter() {
                 msg.push_str("\n    at ");
                 msg.push_str(&location.to_string());
             }
