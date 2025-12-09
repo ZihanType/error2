@@ -1,7 +1,6 @@
-use crate::{BakctraceEntry, Error2, Location};
+use crate::{Backtrace, BakctraceEntry, Location};
 
-pub fn extract_error_stack(e: &dyn Error2) -> Box<[Box<str>]> {
-    let backtrace = e.backtrace();
+fn extract_error_stack(backtrace: &Backtrace) -> Box<[Box<str>]> {
     let (head, entries) = backtrace.head_and_entries();
 
     let mut stack: Vec<Box<str>> = Vec::with_capacity(entries.len());
@@ -57,8 +56,8 @@ pub fn extract_error_stack(e: &dyn Error2) -> Box<[Box<str>]> {
     stack.into()
 }
 
-pub fn extract_error_message(e: &dyn Error2) -> Box<str> {
-    let stack = extract_error_stack(e);
+pub(crate) fn extract_error_message(backtrace: &Backtrace) -> Box<str> {
+    let stack = extract_error_stack(backtrace);
 
     if stack.is_empty() {
         Box::from("")

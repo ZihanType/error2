@@ -47,7 +47,7 @@ impl Debug for BoxedError2 {
             Display::fmt(&self.source, f)?;
             write!(f, "\n\n")?;
 
-            let m = crate::extract_error_message(self);
+            let m = self.error_message();
             Display::fmt(&m, f)
         }
     }

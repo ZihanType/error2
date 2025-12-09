@@ -38,13 +38,12 @@ pub use self::{
     boxed::{BoxedError2, ViaErr2, ViaRoot, ViaStd},
     context::Context,
     error2::Error2,
-    extract::{extract_error_message, extract_error_stack},
     iter::AttachIter,
     location::Location,
     root_error::RootError,
     transform::{MiddleToTarget, SourceToTarget},
 };
-pub(crate) use self::{backtrace::BakctraceEntry, str_id::StrId};
+pub(crate) use self::{backtrace::BakctraceEntry, extract::extract_error_message, str_id::StrId};
 
 pub(crate) mod private {
     #[derive(Debug, Clone, Copy)]
