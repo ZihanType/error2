@@ -47,7 +47,7 @@ impl Debug for BoxedError2 {
             Display::fmt(&self.source, f)?;
             write!(f, "\n\n")?;
 
-            let m = self.error_message();
+            let m = self.backtrace().error_message();
             Display::fmt(&m, f)
         }
     }
