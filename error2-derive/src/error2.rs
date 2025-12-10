@@ -194,7 +194,6 @@ fn generate_struct(
     let error_kind: ErrorKind;
     let middle_type: Type;
     let backtrace_field_tokens: TokenStream;
-    let assert_source_not_impl_error2: TokenStream;
 
     match (source_field, backtrace_field) {
         // incorrect definition
@@ -211,7 +210,6 @@ fn generate_struct(
             backtrace_field_tokens = quote! {
                 backtrace: #crate_path::Backtrace::new(),
             };
-            assert_source_not_impl_error2 = quote! {};
         }
         // error2 error
         (Some(source_field), None) => {
@@ -220,7 +218,6 @@ fn generate_struct(
             error_kind = ErrorKind::Err2;
             middle_type = ty.clone();
             backtrace_field_tokens = quote! {};
-            assert_source_not_impl_error2 = quote! {};
             if scope.intersects(ty) {
                 error_inferred_bounds.insert(ty, quote! { #crate_path::Error2 + 'static });
             }
@@ -234,8 +231,8 @@ fn generate_struct(
             backtrace_field_tokens = quote! {
                 backtrace: #crate_path::Backtrace::with_head(&middle),
             };
-            assert_source_not_impl_error2 = quote! {
-                #crate_path::assert_not_impl_any!(#ty: #crate_path::Error2);
+            if scope.intersects(ty) {
+                error_inferred_bounds.insert(ty, quote! { ::core::error::Error + 'static });
             }
         }
     }
@@ -281,7 +278,6 @@ fn generate_struct(
         generics,
         middle_type,
         backtrace_field_tokens,
-        assert_source_not_impl_error2,
     );
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
@@ -426,7 +422,6 @@ fn generate_enum(
         let error_kind: ErrorKind;
         let middle_type: Type;
         let backtrace_field_tokens: TokenStream;
-        let assert_source_not_impl_error2: TokenStream;
 
         match (source_field, backtrace_field) {
             // incorrect definition
@@ -444,7 +439,6 @@ fn generate_enum(
                 backtrace_field_tokens = quote! {
                     backtrace: #crate_path::Backtrace::new(),
                 };
-                assert_source_not_impl_error2 = quote! {};
             }
             // error2 error
             (Some(source_field), None) => {
@@ -453,7 +447,6 @@ fn generate_enum(
                 error_kind = ErrorKind::Err2;
                 middle_type = ty.clone();
                 backtrace_field_tokens = quote! {};
-                assert_source_not_impl_error2 = quote! {};
                 if scope.intersects(ty) {
                     error_inferred_bounds.insert(ty, quote! { #crate_path::Error2 + 'static });
                 }
@@ -467,8 +460,8 @@ fn generate_enum(
                 backtrace_field_tokens = quote! {
                     backtrace: #crate_path::Backtrace::with_head(&middle),
                 };
-                assert_source_not_impl_error2 = quote! {
-                    #crate_path::assert_not_impl_any!(#ty: #crate_path::Error2);
+                if scope.intersects(ty) {
+                    error_inferred_bounds.insert(ty, quote! { ::core::error::Error + 'static });
                 }
             }
         }
@@ -482,7 +475,6 @@ fn generate_enum(
             no_source_no_backtrace_inferred_bounds,
             middle_type,
             backtrace_field_tokens,
-            assert_source_not_impl_error2,
             variant_display,
         });
     }
@@ -503,7 +495,6 @@ fn generate_enum(
             no_source_no_backtrace_inferred_bounds,
             middle_type,
             backtrace_field_tokens,
-            assert_source_not_impl_error2,
             variant_display,
         } = input;
 
@@ -534,7 +525,6 @@ fn generate_enum(
             generics,
             middle_type,
             backtrace_field_tokens,
-            assert_source_not_impl_error2,
             variant_display,
         );
 
@@ -639,7 +629,6 @@ fn generate_variant(
     generics: &Generics,
     middle_type: Type,
     backtrace_field_tokens: TokenStream,
-    assert_source_not_impl_error2: TokenStream,
     display_tokens: Option<TokenStream>,
 ) -> VariantOutput {
     let context_def = generate_context_def(
@@ -655,7 +644,6 @@ fn generate_variant(
         generics,
         middle_type,
         backtrace_field_tokens,
-        assert_source_not_impl_error2,
     );
 
     let display_arm = match display_tokens {
@@ -713,7 +701,6 @@ struct VariantInput<'a> {
     no_source_no_backtrace_inferred_bounds: InferredBounds,
     middle_type: Type,
     backtrace_field_tokens: TokenStream,
-    assert_source_not_impl_error2: TokenStream,
     variant_display: Option<TokenStream>,
 }
 
@@ -739,7 +726,6 @@ fn generate_context_def(
     generics: &Generics,
     middle_type: Type,
     backtrace_field_tokens: TokenStream,
-    assert_source_not_impl_error2: TokenStream,
 ) -> TokenStream {
     let context_ident = format_ident!("{}2", context_ident_prefix);
 
@@ -805,8 +791,6 @@ fn generate_context_def(
         impl #additional_impl_generics MiddleToTarget < #middle_type, #type_ident #ty_generics > for #context_ident #context_generics #where_clause {
             #[allow(unused_variables)]
             fn middle_to_target(self, middle: #middle_type, location: Location) -> #type_ident #ty_generics {
-                #assert_source_not_impl_error2
-
                 let mut error = #type_path {
                     #(
                         #no_source_no_backtrace_field_idents : Into::into(self.#no_source_no_backtrace_field_idents),
