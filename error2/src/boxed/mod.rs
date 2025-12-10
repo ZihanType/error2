@@ -9,26 +9,91 @@ use std::{
 use self::{root_err::RootErr, std_err::StdErr};
 use crate::{Backtrace, Error2, Location, SourceToTarget, private};
 
+pub enum ErrorKind<E, B> {
+    Std { source: E, backtrace: B },
+    Err2 { source: E },
+}
+
 pub struct BoxedError2 {
     source: Box<dyn Error2 + Send + Sync + 'static>,
 }
 
 impl BoxedError2 {
     #[inline]
-    const fn source(&self) -> &(dyn Error + Send + Sync + 'static) {
+    const fn source_ref(&self) -> &(dyn Error + Send + Sync + 'static) {
         &*self.source
     }
 
     #[inline]
+    const fn source_mut(&mut self) -> &mut (dyn Error + Send + Sync + 'static) {
+        &mut *self.source
+    }
+
+    #[inline]
+    fn source(self) -> Box<dyn Error + Send + Sync + 'static> {
+        self.source
+    }
+
+    #[inline]
     pub fn is_root(&self) -> bool {
-        self.source().is::<RootErr>()
+        self.source_ref().is::<RootErr>()
     }
 
     #[inline]
     pub fn is<T: Error + 'static>(&self) -> bool {
-        let source = self.source();
+        debug_assert!(!self.is_root());
+        let source = self.source_ref();
 
         source.is::<StdErr<T>>() || source.is::<T>()
+    }
+
+    #[inline]
+    pub fn downcast_ref<T: Error + 'static>(&self) -> Option<ErrorKind<&T, &Backtrace>> {
+        debug_assert!(!self.is_root());
+        let source = self.source_ref();
+
+        if let Some(StdErr { source, backtrace }) = source.downcast_ref::<StdErr<T>>() {
+            Some(ErrorKind::Std { source, backtrace })
+        } else if let Some(source) = source.downcast_ref::<T>() {
+            Some(ErrorKind::Err2 { source })
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn downcast_mut<T: Error + 'static>(
+        &mut self,
+    ) -> Option<ErrorKind<&mut T, &mut Backtrace>> {
+        debug_assert!(!self.is_root());
+        let source = self.source_ref();
+
+        if source.is::<StdErr<T>>() {
+            let StdErr { source, backtrace } =
+                self.source_mut().downcast_mut::<StdErr<T>>().unwrap();
+            Some(ErrorKind::Std { source, backtrace })
+        } else if source.is::<T>() {
+            let source = self.source_mut().downcast_mut::<T>().unwrap();
+            Some(ErrorKind::Err2 { source })
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn downcast<T: Error + 'static>(self) -> Result<ErrorKind<T, Backtrace>, Self> {
+        debug_assert!(!self.is_root());
+        let source = self.source_ref();
+
+        if source.is::<StdErr<T>>() {
+            let StdErr { source, backtrace } = *self.source().downcast::<StdErr<T>>().unwrap();
+            Ok(ErrorKind::Std { source, backtrace })
+        } else if source.is::<T>() {
+            let source = *self.source().downcast::<T>().unwrap();
+            Ok(ErrorKind::Err2 { source })
+        } else {
+            Err(self)
+        }
     }
 }
 

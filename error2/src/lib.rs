@@ -32,7 +32,7 @@ pub use self::stream::AttachStream;
 pub use self::{
     attach::Attach,
     backtrace::Backtrace,
-    boxed::{BoxedError2, ViaErr2, ViaRoot, ViaStd},
+    boxed::{BoxedError2, ErrorKind, ViaErr2, ViaRoot, ViaStd},
     context::Context,
     error2::Error2,
     iter::AttachIter,

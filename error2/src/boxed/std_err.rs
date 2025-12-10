@@ -6,8 +6,8 @@ use std::{
 use crate::{Backtrace, Error2};
 
 pub(super) struct StdErr<T> {
-    source: T,
-    backtrace: Backtrace,
+    pub(super) source: T,
+    pub(super) backtrace: Backtrace,
 }
 
 impl<T> StdErr<T> {
