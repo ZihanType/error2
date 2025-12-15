@@ -2,6 +2,7 @@ mod root_err;
 mod std_err;
 
 use std::{
+    any::TypeId,
     error::Error,
     fmt::{self, Debug, Display, Formatter},
 };
@@ -39,9 +40,13 @@ impl BoxedError2 {
         self.source_ref().is::<RootErr>()
     }
 
+    fn generic_is_root<T: Error + 'static>() -> bool {
+        TypeId::of::<RootErr>() == TypeId::of::<T>()
+    }
+
     #[inline]
     pub fn is<T: Error + 'static>(&self) -> bool {
-        debug_assert!(!self.is_root());
+        debug_assert!(!Self::generic_is_root::<T>());
         let source = self.source_ref();
 
         source.is::<StdErr<T>>() || source.is::<T>()
@@ -49,7 +54,7 @@ impl BoxedError2 {
 
     #[inline]
     pub fn downcast_ref<T: Error + 'static>(&self) -> Option<ErrorKind<&T, &Backtrace>> {
-        debug_assert!(!self.is_root());
+        debug_assert!(!Self::generic_is_root::<T>());
         let source = self.source_ref();
 
         if let Some(StdErr { source, backtrace }) = source.downcast_ref::<StdErr<T>>() {
@@ -65,7 +70,7 @@ impl BoxedError2 {
     pub fn downcast_mut<T: Error + 'static>(
         &mut self,
     ) -> Option<ErrorKind<&mut T, &mut Backtrace>> {
-        debug_assert!(!self.is_root());
+        debug_assert!(!Self::generic_is_root::<T>());
         let source = self.source_ref();
 
         if source.is::<StdErr<T>>() {
@@ -82,7 +87,7 @@ impl BoxedError2 {
 
     #[inline]
     pub fn downcast<T: Error + 'static>(self) -> Result<ErrorKind<T, Backtrace>, Self> {
-        debug_assert!(!self.is_root());
+        debug_assert!(!Self::generic_is_root::<T>());
         let source = self.source_ref();
 
         if source.is::<StdErr<T>>() {
