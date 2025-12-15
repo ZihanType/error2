@@ -1,20 +1,11 @@
-use std::{any, convert::Infallible, error::Error};
+use std::{convert::Infallible, error::Error};
 
-use crate::{Backtrace, Location};
+use crate::Backtrace;
 
 pub trait Error2: Error {
     fn backtrace(&self) -> &Backtrace;
 
     fn backtrace_mut(&mut self) -> &mut Backtrace;
-
-    #[doc(hidden)]
-    fn push_error(&mut self, location: Location) {
-        let type_name = any::type_name::<Self>();
-        let display = self.to_string();
-
-        self.backtrace_mut()
-            .push_error(type_name, display, location);
-    }
 }
 
 impl Error2 for Infallible {

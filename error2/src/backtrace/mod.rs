@@ -4,7 +4,7 @@ mod message;
 use std::{any, error::Error, fmt, mem};
 
 use self::{double_locations::DoubleLocations, message::Message};
-use crate::{Location, extract_error_message};
+use crate::Location;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -108,6 +108,6 @@ impl Backtrace {
     }
 
     pub fn error_message(&self) -> Box<str> {
-        extract_error_message(self)
+        crate::extract_error_message(self)
     }
 }

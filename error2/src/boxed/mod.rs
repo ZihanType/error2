@@ -164,7 +164,7 @@ impl BoxedError2 {
             source: Box::new(RootErr::new(root)),
         };
 
-        error.push_error(location);
+        crate::push_error(&mut error, location);
 
         error
     }
@@ -193,7 +193,7 @@ impl BoxedError2 {
                 source: Box::new(StdErr::new(source)),
             };
 
-            error.push_error(location);
+            crate::push_error(&mut error, location);
 
             error
         }
@@ -223,7 +223,7 @@ impl BoxedError2 {
                 source: Box::new(source),
             };
 
-            error.push_error(location);
+            crate::push_error(&mut error, location);
 
             error
         }

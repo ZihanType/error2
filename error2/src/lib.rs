@@ -49,3 +49,12 @@ pub(crate) mod private {
     #[derive(Debug, Clone, Copy)]
     pub enum ViaFull {}
 }
+
+#[doc(hidden)]
+pub fn push_error<E: Error2 + ?Sized>(error: &mut E, location: Location) {
+    let display = error.to_string();
+    let backtrace = error.backtrace_mut();
+    let type_name = core::any::type_name::<E>();
+
+    backtrace.push_error(type_name, display, location);
+}

@@ -783,7 +783,7 @@ fn generate_context_def(
 
     quote_use! {
         # use core::convert::Into;
-        # use #crate_path::{MiddleToTarget, Error2, Location};
+        # use #crate_path::{MiddleToTarget, Location};
 
         #[derive(Debug, Clone, Copy)]
         #context_vis struct #context_ident #context_generics #context_struct_body
@@ -799,7 +799,7 @@ fn generate_context_def(
                     #source_field
                 };
 
-                Error2::push_error(&mut error, location);
+                #crate_path::push_error(&mut error, location);
 
                 error
             }
