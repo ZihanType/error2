@@ -1,5 +1,20 @@
 use crate::{Backtrace, BakctraceEntry, Location};
 
+fn flush_msg(mut msg: String, locations: &mut Vec<&Location>, stack: &mut Vec<Box<str>>) {
+    if msg.is_empty() {
+        debug_assert!(locations.is_empty());
+        return;
+    }
+
+    for location in locations.iter() {
+        msg.push_str("\n    at ");
+        msg.push_str(&location.to_string());
+    }
+
+    stack.push(msg.into());
+    locations.clear();
+}
+
 fn extract_error_stack(backtrace: &Backtrace) -> Box<[Box<str>]> {
     let (head, entries) = backtrace.head_and_entries();
 
@@ -12,21 +27,6 @@ fn extract_error_stack(backtrace: &Backtrace) -> Box<[Box<str>]> {
     {
         let mut msg = String::new();
         let mut locations = Vec::<&Location>::new();
-
-        fn flush_msg(mut msg: String, locations: &mut Vec<&Location>, stack: &mut Vec<Box<str>>) {
-            if msg.is_empty() {
-                debug_assert!(locations.is_empty());
-                return;
-            }
-
-            for location in locations.iter() {
-                msg.push_str("\n    at ");
-                msg.push_str(&location.to_string());
-            }
-
-            stack.push(msg.into());
-            locations.clear();
-        }
 
         for entry in entries {
             match entry {

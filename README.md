@@ -19,7 +19,7 @@ pub trait Error2: Error {
 ```rust
 use std::io;
 
-use error2::{Attach, Backtrace, Error2, Context};
+use error2::{Attach, Backtrace, Context, Error2};
 
 #[derive(Debug, Error2)]
 pub enum CustomError {
@@ -47,10 +47,10 @@ fn main() {
         // Print the error message:
         //
         // test_error2::CustomError: IO error
-        //     at src/main.rs:26:30
-        //     at src/main.rs:22:32
+        //     at src/main.rs:103:32
+        //     at src/main.rs:107:30
         // std::io::error::Error: No such file or directory (os error 2)
-        println!("{}", error2::extract_error_message(&e));
+        println!("{}", e.backtrace().error_message());
     }
 }
 ```
