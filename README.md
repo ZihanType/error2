@@ -19,7 +19,7 @@ pub trait Error2: Error {
 ```rust
 use std::io;
 
-use error2::{Attach, Backtrace, Context, Error2};
+use error2::prelude::*;
 
 #[derive(Debug, Error2)]
 pub enum CustomError {
