@@ -19,6 +19,17 @@ mod str_id;
 mod stream;
 mod transform;
 
+pub mod prelude {
+    #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
+    #[cfg(feature = "derive")]
+    pub use ::error2_derive::Error2;
+
+    pub use crate::{
+        Attach as _, Backtrace, BoxedError2, Context as _, RootError as _, ViaErr2, ViaRoot,
+        ViaStd, error2::Error2,
+    };
+}
+
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
 #[cfg(feature = "derive")]
 pub use ::error2_derive::Error2;
