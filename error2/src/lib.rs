@@ -7,6 +7,7 @@ mod boxed;
 mod context;
 mod error2;
 mod extract;
+pub mod kind;
 mod location;
 mod macros;
 mod root_error;
@@ -31,7 +32,7 @@ pub use ::error2_derive::Error2;
 pub use self::{
     _attach::Attach,
     backtrace::Backtrace,
-    boxed::{BoxedError2, ErrorKind, ViaErr2, ViaRoot, ViaStd},
+    boxed::{BoxedError2, ViaErr2, ViaRoot, ViaStd},
     context::Context,
     error2::Error2,
     location::Location,

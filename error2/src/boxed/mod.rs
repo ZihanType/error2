@@ -8,12 +8,7 @@ use std::{
 };
 
 use self::{root_err::RootErr, std_err::StdErr};
-use crate::{Backtrace, Error2, Location, private, transform::SourceToTarget};
-
-pub enum ErrorKind<E, B> {
-    Std { source: E, backtrace: B },
-    Err2 { source: E },
-}
+use crate::{Backtrace, Error2, Location, kind::ErrorKind, private, transform::SourceToTarget};
 
 pub struct BoxedError2 {
     source: Box<dyn Error2 + Send + Sync + 'static>,
