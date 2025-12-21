@@ -1,17 +1,18 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod _attach;
-pub mod attach;
 mod backtrace;
 mod boxed;
 mod context;
 mod error2;
 mod extract;
-pub mod kind;
 mod location;
 mod macros;
 mod root_error;
 mod str_id;
+
+pub mod attach;
+pub mod kind;
 pub mod transform;
 
 pub mod prelude {
@@ -19,10 +20,10 @@ pub mod prelude {
     #[cfg(feature = "derive")]
     pub use ::error2_derive::Error2;
 
-    pub use crate::{
-        Attach as _, Backtrace, BoxedError2, Context as _, RootError as _, ViaErr2, ViaRoot,
-        ViaStd, error2::Error2,
-    };
+    // traits
+    pub use crate::{Attach as _, Context as _, RootError as _, error2::Error2};
+    // types
+    pub use crate::{Backtrace, BoxedError2, ViaErr2, ViaRoot, ViaStd};
 }
 
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
