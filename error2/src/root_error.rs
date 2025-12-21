@@ -1,4 +1,4 @@
-use crate::{Error2, Location, SourceToTarget};
+use crate::{Error2, Location, transform::SourceToTarget};
 
 pub trait RootError<M, Target: Error2>: SourceToTarget<M, (), (), Target> + Sized {
     #[inline]

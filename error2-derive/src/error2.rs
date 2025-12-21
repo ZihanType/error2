@@ -783,7 +783,7 @@ fn generate_context_def(
 
     quote_use! {
         # use core::convert::Into;
-        # use #crate_path::{MiddleToTarget, Location};
+        # use #crate_path::{transform::MiddleToTarget, Location};
 
         #[derive(Debug, Clone, Copy)]
         #context_vis struct #context_ident #context_generics #context_struct_body

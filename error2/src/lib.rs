@@ -17,7 +17,7 @@ mod str_id;
 #[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
 #[cfg(feature = "stream")]
 mod stream;
-mod transform;
+pub mod transform;
 
 pub mod prelude {
     #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
@@ -49,7 +49,6 @@ pub use self::{
     iter::AttachIter,
     location::Location,
     root_error::RootError,
-    transform::{MiddleToTarget, SourceToTarget},
 };
 pub(crate) use self::{backtrace::BakctraceEntry, extract::extract_error_message, str_id::StrId};
 
