@@ -3,7 +3,6 @@ use std::str::FromStr;
 use heck::ToSnakeCase;
 use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident, quote};
-use quote_use::quote_use;
 use syn::{
     Data, DataEnum, DataStruct, DataUnion, DeriveInput, Field, Fields, FieldsNamed, FieldsUnnamed,
     Generics, Ident, Path, Token, Type, Variant, Visibility, parse_quote, punctuated::Punctuated,
@@ -284,11 +283,9 @@ fn generate_struct(
 
     let display_impl = match display_tokens {
         None => quote! {},
-        Some(tokens) => quote_use! {
-            # use core::fmt::{Display, Formatter, Result};
-
-            impl #impl_generics Display for #struct_ident #ty_generics #where_clause {
-                fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        Some(tokens) => quote! {
+            impl #impl_generics ::core::fmt::Display for #struct_ident #ty_generics #where_clause {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     #[allow(unused_variables)]
                     #[allow(unused_assignments)]
                     let Self { #(#all_field_idents,)* } = self;
@@ -300,16 +297,13 @@ fn generate_struct(
 
     let error_where_clause = error_inferred_bounds.augment_where_clause(where_clause.cloned());
 
-    let expand = quote_use! {
-        # use core::error::Error;
-        # use core::option::Option;
-
+    let expand = quote! {
         #context_def
 
         #display_impl
 
-        impl #impl_generics Error for #struct_ident #ty_generics #error_where_clause {
-            fn source(&self) -> Option<&(dyn Error + 'static)> {
+        impl #impl_generics ::core::error::Error for #struct_ident #ty_generics #error_where_clause {
+            fn source(&self) -> ::core::option::Option<&(dyn ::core::error::Error + 'static)> {
                 #error_source_body
             }
         }
@@ -547,11 +541,9 @@ fn generate_enum(
     let display_impl = if !exist_display_on_variant {
         quote! {}
     } else {
-        quote_use! {
-            # use core::fmt::{Display, Formatter, Result};
-
-            impl #impl_generics Display for #enum_ident #ty_generics #where_clause {
-                fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        quote! {
+            impl #impl_generics ::core::fmt::Display for #enum_ident #ty_generics #where_clause {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     #[allow(unused_variables)]
                     #[allow(unused_assignments)]
                     match self {
@@ -564,16 +556,13 @@ fn generate_enum(
 
     let error_where_clause = error_inferred_bounds.augment_where_clause(where_clause.cloned());
 
-    let expand = quote_use! {
-        # use core::error::Error;
-        # use core::option::Option;
-
+    let expand = quote! {
         #(#context_defs)*
 
         #display_impl
 
-        impl #impl_generics Error for #enum_ident #ty_generics #error_where_clause {
-            fn source(&self) -> Option<&(dyn Error + 'static)> {
+        impl #impl_generics ::core::error::Error for #enum_ident #ty_generics #error_where_clause {
+            fn source(&self) -> ::core::option::Option<&(dyn ::core::error::Error + 'static)> {
                 match self {
                     #(#error_source_arms)*
                 }
@@ -781,19 +770,16 @@ fn generate_context_def(
         }
     };
 
-    quote_use! {
-        # use core::convert::Into;
-        # use #crate_path::{transform::MiddleToTarget, Location};
-
+    quote! {
         #[derive(Debug, Clone, Copy)]
         #context_vis struct #context_ident #context_generics #context_struct_body
 
-        impl #additional_impl_generics MiddleToTarget < #middle_type, #type_ident #ty_generics > for #context_ident #context_generics #where_clause {
+        impl #additional_impl_generics #crate_path::transform::MiddleToTarget < #middle_type, #type_ident #ty_generics > for #context_ident #context_generics #where_clause {
             #[allow(unused_variables)]
-            fn middle_to_target(self, middle: #middle_type, location: Location) -> #type_ident #ty_generics {
+            fn middle_to_target(self, middle: #middle_type, location: #crate_path::Location) -> #type_ident #ty_generics {
                 let mut error = #type_path {
                     #(
-                        #no_source_no_backtrace_field_idents : Into::into(self.#no_source_no_backtrace_field_idents),
+                        #no_source_no_backtrace_field_idents : ::core::convert::Into::into(self.#no_source_no_backtrace_field_idents),
                     )*
                     #backtrace_field_tokens
                     #source_field
