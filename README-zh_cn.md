@@ -11,7 +11,7 @@
 
 ```toml
 [dependencies]
-error2 = "0.13"
+error2 = "0.13.1"
 ```
 
 ## 用法
@@ -110,13 +110,13 @@ fn validate(value: i32) -> Result<(), ValidationError> {
 ```rust
 fn operation() -> Result<(), BoxedError2> {
     std::fs::read("file.txt").context(ViaStd)?;
-    
+
     if condition {
         ViaRoot("错误消息").fail()?;
     }
-    
+
     other_operation().context(ViaErr2)?;
-    
+
     Ok(())
 }
 ```

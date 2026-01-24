@@ -17,7 +17,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! error2 = "0.13"
+//! error2 = "0.13.1"
 //! ```
 //!
 //! Define your error types:
