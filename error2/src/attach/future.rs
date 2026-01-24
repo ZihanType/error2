@@ -24,6 +24,25 @@ where
 }
 
 pin_project! {
+    /// Future adapter that attaches location to errors.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use error2::prelude::*;
+    /// use std::future::Future;
+    /// use std::pin::Pin;
+    ///
+    /// # async fn async_operation() -> Result<(), BoxedError2> {
+    /// #     Ok(())
+    /// # }
+    /// #
+    /// async fn process() -> Result<(), BoxedError2> {
+    ///     async_operation()
+    ///     .attach() // Location recorded here
+    ///     .await
+    /// }
+    /// ```
     #[derive(Debug, Clone, Copy)]
     #[must_use = "futures do nothing unless you `.await` or poll them"]
     pub struct AttachFuture<F, W> {

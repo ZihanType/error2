@@ -25,6 +25,37 @@ where
 }
 
 pin_project! {
+    /// Stream adapter that attaches location to errors.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use error2::prelude::*;
+    /// use futures_core::Stream;
+    /// use std::pin::Pin;
+    /// use std::task::{Context, Poll};
+    ///
+    /// # struct TestStream;
+    /// # impl Stream for TestStream {
+    /// #     type Item = Result<i32, BoxedError2>;
+    /// #     fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    /// #         Poll::Ready(None)
+    /// #     }
+    /// # }
+    /// # fn some_stream() -> TestStream { TestStream }
+    /// #
+    /// async fn process_stream() -> Result<(), BoxedError2> {
+    ///     let mut stream = some_stream().attach(); // Location recorded here
+    ///
+    ///     // In a real async runtime:
+    ///     // while let Some(item) = stream.next().await {
+    ///     //     let value = item?;
+    ///     //     // Process value...
+    ///     // }
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
     #[derive(Debug, Clone, Copy)]
     #[must_use = "streams do nothing unless polled"]
     pub struct AttachStream<S, W> {

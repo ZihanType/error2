@@ -2,6 +2,26 @@ use std::{fmt, panic};
 
 use crate::StrId;
 
+/// Represents a source code location (file, line, column).
+///
+/// `Location` is used to track where errors are created and propagated,
+/// providing detailed backtraces for debugging.
+///
+/// # Creation
+///
+/// Locations are typically created automatically by methods with `#[track_caller]`:
+///
+/// ```
+/// use error2::Location;
+///
+/// let loc = Location::caller(); // Captures current location
+/// println!("At {}:{}:{}", loc.file(), loc.line(), loc.column());
+/// ```
+///
+/// # Usage in Backtraces
+///
+/// Locations are automatically recorded when using `.context()`, `.attach()`,
+/// `.build()`, and other error handling methods.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Location {
@@ -21,27 +41,32 @@ impl Location {
         }
     }
 
+    /// Captures the caller's location using `#[track_caller]`.
     #[track_caller]
     #[inline]
     pub fn caller() -> Self {
         Self::from_std(panic::Location::caller())
     }
 
+    /// Returns the file path.
     #[inline]
     pub fn file(&self) -> &'static str {
         self.file.into()
     }
 
+    /// Returns the line number.
     #[inline]
     pub const fn line(&self) -> u32 {
         self.line
     }
 
+    /// Returns the column number.
     #[inline]
     pub const fn column(&self) -> u32 {
         self.column
     }
 
+    /// Converts from `std::panic::Location`.
     #[inline]
     pub fn from_std(location: &panic::Location<'static>) -> Self {
         Self {

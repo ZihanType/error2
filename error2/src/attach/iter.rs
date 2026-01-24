@@ -17,6 +17,24 @@ where
     }
 }
 
+/// Iterator adapter that attaches location to each error.
+///
+/// # Example
+///
+/// ```
+/// use error2::prelude::*;
+///
+/// # fn example() -> Result<(), BoxedError2> {
+/// let results: Vec<Result<i32, BoxedError2>> = vec![Ok(1), Ok(2)];
+/// let results = results.into_iter().attach(); // Error will include this location
+///
+/// for value in results {
+///     let v = value?;
+///     println!("{}", v);
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, Copy)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct AttachIter<I, W> {

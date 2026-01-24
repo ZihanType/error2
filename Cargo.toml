@@ -10,6 +10,7 @@ license = "MIT/Apache-2.0"
 homepage = "https://github.com/ZihanType/error2"
 repository = "https://github.com/ZihanType/error2"
 include = ["src/**/*", "Cargo.toml"]
+readme = "README.md"
 
 [workspace.dependencies]
 # self
@@ -27,6 +28,12 @@ scc = { version = "3", default-features = false }
 append-only-vec = { version = "0.1", default-features = false }
 pin-project-lite = { version = "0.2", default-features = false }
 futures-core = { version = "0.3", default-features = false }
+regex = { version = "1", default-features = false }
 
 [workspace.lints.rust]
 rust-2024-compatibility = "warn"
+unsafe_code = "forbid"
+private_interfaces = "deny"
+private_bounds = "deny"
+unreachable_pub = "deny"
+missing_docs = "warn"

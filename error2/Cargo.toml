@@ -21,6 +21,7 @@ futures-core = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json = { workspace = true, features = ["std"] }
+regex = { workspace = true, features = ["unicode"] }
 
 [features]
 default = ["derive"]
