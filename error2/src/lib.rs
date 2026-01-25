@@ -5,11 +5,11 @@
 //!
 //! # Features
 //!
-//! - 🔍 **Backtrace Tracking** - Automatically capture error creation location; manually record propagation with `.attach()`
-//! - 🔗 **Error Chaining** - Chain errors from different libraries while preserving context
-//! - 🎯 **Derive Macro** - `#[derive(Error2)]` for easy error type creation
-//! - 🔄 **Type Conversion** - `Result<T, E1> -> Result<T, E2>`, `Option<T> -> Result<T, E>` with `.context()`
-//! - 📦 **Type Erasure** - `BoxedError2` for anyhow-like ergonomics
+//! - **Backtrace Tracking** - Automatically capture error creation location; manually record propagation with `.attach()`
+//! - **Error Chaining** - Chain errors from different libraries while preserving context
+//! - **Derive Macro** - `#[derive(Error2)]` for easy error type creation
+//! - **Type Conversion** - `Result<T, E1> -> Result<T, E2>`, `Option<T> -> Result<T, E>` with `.context()`
+//! - **Type Erasure** - `BoxedError2` for anyhow-like ergonomics
 //!
 //! # Quick Start
 //!
