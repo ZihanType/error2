@@ -130,7 +130,7 @@ fn main() {
         Err(e) => {
             // Print complete error chain with locations:
             //
-            // IoError: io error: config.txt
+            // IoError: io error: file.txt
             //     at src/main.rs:15:42
             //     at src/main.rs:23:5
             // std::io::Error: No such file or directory (os error 2)
