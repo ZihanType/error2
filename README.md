@@ -11,7 +11,7 @@ Error handling library with backtrace support and ergonomic error conversion.
 
 ```toml
 [dependencies]
-error2 = "0.13.1"
+error2 = "0.13.2"
 ```
 
 ## Usage
