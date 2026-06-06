@@ -11,7 +11,7 @@
 
 ```toml
 [dependencies]
-error2 = "0.13.2"
+error2 = "0.13.3"
 ```
 
 ## 用法
