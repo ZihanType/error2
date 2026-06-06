@@ -193,6 +193,7 @@ fn generate_struct(
     let error_kind: ErrorKind;
     let middle_type: Type;
     let backtrace_field_tokens: TokenStream;
+    let if_source_impl_error2_then_panic: TokenStream;
 
     match (source_field, backtrace_field) {
         // incorrect definition
@@ -209,6 +210,7 @@ fn generate_struct(
             backtrace_field_tokens = quote! {
                 backtrace: #crate_path::Backtrace::new(),
             };
+            if_source_impl_error2_then_panic = quote! {};
         }
         // error2 error
         (Some(source_field), None) => {
@@ -217,6 +219,7 @@ fn generate_struct(
             error_kind = ErrorKind::Err2;
             middle_type = ty.clone();
             backtrace_field_tokens = quote! {};
+            if_source_impl_error2_then_panic = quote! {};
             if scope.intersects(ty) {
                 error_inferred_bounds.insert(ty, quote! { #crate_path::Error2 + 'static });
             }
@@ -229,6 +232,15 @@ fn generate_struct(
             middle_type = ty.clone();
             backtrace_field_tokens = quote! {
                 backtrace: #crate_path::Backtrace::with_head(&middle),
+            };
+            if_source_impl_error2_then_panic = quote! {
+                if #crate_path::is_error2::<#ty>() {
+                    ::core::panic!(
+                        "`{}` implements `Error2`, it already has a backtrace, so the `backtrace` field in `{} {{ ... }}` is needless.",
+                        ::core::any::type_name::<#ty>(),
+                        ::core::stringify!(#struct_ident),
+                    )
+                }
             };
             if scope.intersects(ty) {
                 error_inferred_bounds.insert(ty, quote! { ::core::error::Error + 'static });
@@ -277,6 +289,7 @@ fn generate_struct(
         generics,
         middle_type,
         backtrace_field_tokens,
+        if_source_impl_error2_then_panic,
     );
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
@@ -416,6 +429,7 @@ fn generate_enum(
         let error_kind: ErrorKind;
         let middle_type: Type;
         let backtrace_field_tokens: TokenStream;
+        let if_source_impl_error2_then_panic: TokenStream;
 
         match (source_field, backtrace_field) {
             // incorrect definition
@@ -433,6 +447,7 @@ fn generate_enum(
                 backtrace_field_tokens = quote! {
                     backtrace: #crate_path::Backtrace::new(),
                 };
+                if_source_impl_error2_then_panic = quote! {};
             }
             // error2 error
             (Some(source_field), None) => {
@@ -441,6 +456,7 @@ fn generate_enum(
                 error_kind = ErrorKind::Err2;
                 middle_type = ty.clone();
                 backtrace_field_tokens = quote! {};
+                if_source_impl_error2_then_panic = quote! {};
                 if scope.intersects(ty) {
                     error_inferred_bounds.insert(ty, quote! { #crate_path::Error2 + 'static });
                 }
@@ -453,6 +469,16 @@ fn generate_enum(
                 middle_type = ty.clone();
                 backtrace_field_tokens = quote! {
                     backtrace: #crate_path::Backtrace::with_head(&middle),
+                };
+                if_source_impl_error2_then_panic = quote! {
+                    if #crate_path::is_error2::<#ty>() {
+                        ::core::panic!(
+                            "`{}` implements `Error2`, it already has a backtrace, so the `backtrace` field in `{}::{} {{ ... }}` is needless.",
+                            ::core::any::type_name::<#ty>(),
+                            ::core::stringify!(#enum_ident),
+                            ::core::stringify!(#variant_ident),
+                        )
+                    }
                 };
                 if scope.intersects(ty) {
                     error_inferred_bounds.insert(ty, quote! { ::core::error::Error + 'static });
@@ -469,6 +495,7 @@ fn generate_enum(
             no_source_no_backtrace_inferred_bounds,
             middle_type,
             backtrace_field_tokens,
+            if_source_impl_error2_then_panic,
             variant_display,
         });
     }
@@ -489,6 +516,7 @@ fn generate_enum(
             no_source_no_backtrace_inferred_bounds,
             middle_type,
             backtrace_field_tokens,
+            if_source_impl_error2_then_panic,
             variant_display,
         } = input;
 
@@ -519,6 +547,7 @@ fn generate_enum(
             generics,
             middle_type,
             backtrace_field_tokens,
+            if_source_impl_error2_then_panic,
             variant_display,
         );
 
@@ -618,6 +647,7 @@ fn generate_variant(
     generics: &Generics,
     middle_type: Type,
     backtrace_field_tokens: TokenStream,
+    if_source_impl_error2_then_panic: TokenStream,
     display_tokens: Option<TokenStream>,
 ) -> VariantOutput {
     let context_def = generate_context_def(
@@ -633,6 +663,7 @@ fn generate_variant(
         generics,
         middle_type,
         backtrace_field_tokens,
+        if_source_impl_error2_then_panic,
     );
 
     let display_arm = match display_tokens {
@@ -691,6 +722,7 @@ struct VariantInput<'a> {
     middle_type: Type,
     backtrace_field_tokens: TokenStream,
     variant_display: Option<TokenStream>,
+    if_source_impl_error2_then_panic: TokenStream,
 }
 
 struct VariantOutput {
@@ -715,6 +747,7 @@ fn generate_context_def(
     generics: &Generics,
     middle_type: Type,
     backtrace_field_tokens: TokenStream,
+    #[allow(unused_variables)] if_source_impl_error2_then_panic: TokenStream,
 ) -> TokenStream {
     let context_ident = format_ident!("{}2", context_ident_prefix);
 
@@ -770,6 +803,11 @@ fn generate_context_def(
         }
     };
 
+    #[cfg(feature = "runtime-check")]
+    let if_source_impl_error2_then_panic = if_source_impl_error2_then_panic;
+    #[cfg(not(feature = "runtime-check"))]
+    let if_source_impl_error2_then_panic = TokenStream::new();
+
     quote! {
         #[derive(Debug, Clone, Copy)]
         #context_vis struct #context_ident #context_generics #context_struct_body
@@ -777,6 +815,8 @@ fn generate_context_def(
         impl #additional_impl_generics #crate_path::transform::MiddleToTarget < #middle_type, #type_ident #ty_generics > for #context_ident #context_generics #where_clause {
             #[allow(unused_variables)]
             fn middle_to_target(self, middle: #middle_type, location: #crate_path::Location) -> #type_ident #ty_generics {
+                #if_source_impl_error2_then_panic
+
                 let mut error = #type_path {
                     #(
                         #no_source_no_backtrace_field_idents : ::core::convert::Into::into(self.#no_source_no_backtrace_field_idents),

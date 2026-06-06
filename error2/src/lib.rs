@@ -267,3 +267,29 @@ pub fn push_error<E: Error2 + ?Sized>(error: &mut E, location: Location) {
 
     backtrace.push_error(type_name, display, location);
 }
+
+#[doc(hidden)]
+pub fn is_error2<T: ?Sized>() -> bool {
+    use std::{iter::FusedIterator, marker::PhantomData};
+
+    struct Checker<'a, T: ?Sized>(&'a mut u8, PhantomData<T>);
+
+    impl<T: ?Sized> Iterator for Checker<'_, T> {
+        type Item = ();
+
+        fn next(&mut self) -> Option<Self::Item> {
+            *self.0 += 1;
+            None
+        }
+    }
+
+    impl<T: ?Sized + Error2> FusedIterator for Checker<'_, T> {}
+
+    let mut counter = 0;
+    let mut it = Checker(&mut counter, PhantomData::<T>).fuse();
+
+    it.next();
+    it.next();
+
+    counter == 2
+}

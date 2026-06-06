@@ -357,6 +357,13 @@ where
 {
     #[inline]
     fn source_to_target(self, source: T, location: Location) -> BoxedError2 {
+        #[cfg(feature = "runtime-check")]
+        if crate::is_error2::<T>() {
+            panic!(
+                "`{}` implements `Error2` but was wrapped with `ViaStd`. Use `ViaErr2` instead.",
+                std::any::type_name::<T>()
+            )
+        }
         BoxedError2::from_std_with_location(source, location)
     }
 }

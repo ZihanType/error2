@@ -30,6 +30,7 @@ derive = ["dep:error2-derive"]
 serde = ["dep:serde"]
 future = ["dep:pin-project-lite"]
 stream = ["dep:pin-project-lite", "dep:futures-core"]
+runtime-check = ["error2-derive?/runtime-check"]
 
 [lints]
 workspace = true

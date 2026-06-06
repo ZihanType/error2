@@ -26,6 +26,9 @@ syn = { workspace = true, features = [
 ] }
 heck = { workspace = true }
 
+[features]
+runtime-check = []
+
 [dev-dependencies]
 # cannot contain `workspace = true` to avoid circular dependencies.
 error2 = { path = "../error2", default-features = false, features = ["derive"] }
