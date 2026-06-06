@@ -208,7 +208,7 @@ fn generate_struct(
             error_kind = ErrorKind::Root;
             middle_type = parse_quote! { () };
             backtrace_field_tokens = quote! {
-                backtrace: #crate_path::Backtrace::new(),
+                backtrace: #crate_path::Backtrace::uninitialized(),
             };
             if_source_impl_error2_then_panic = quote! {};
         }
@@ -445,7 +445,7 @@ fn generate_enum(
                 error_kind = ErrorKind::Root;
                 middle_type = parse_quote! { () };
                 backtrace_field_tokens = quote! {
-                    backtrace: #crate_path::Backtrace::new(),
+                    backtrace: #crate_path::Backtrace::uninitialized(),
                 };
                 if_source_impl_error2_then_panic = quote! {};
             }

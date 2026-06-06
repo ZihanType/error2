@@ -21,7 +21,7 @@ impl RootErr {
     {
         Self {
             r: Box::new(root),
-            backtrace: Backtrace::new(),
+            backtrace: Backtrace::uninitialized(),
         }
     }
 }

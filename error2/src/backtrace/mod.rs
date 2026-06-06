@@ -166,7 +166,7 @@ impl fmt::Debug for Backtrace {
 impl Backtrace {
     #[doc(hidden)]
     #[inline]
-    pub const fn new() -> Self {
+    pub const fn uninitialized() -> Self {
         Self {
             entries: Vec::new(),
         }
