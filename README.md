@@ -61,20 +61,30 @@ struct AppError {
 
 ### Convert Errors
 
+All methods on the `Context` trait return `Context::TargetWrapper`. Its concrete
+type depends on the receiver: `Result<T, Target>` for `Result<T, Source>` and
+`Option<T>`, or `Target` for an error value of type `Source`.
+
 ```rust
 // Result<T, Source> -> Result<T, Target>
 std::fs::read_to_string("file.txt")
     .context(IoError2 { path: "file.txt" })?;
 
-// Option<T> -> Result<T, E>
+// Option<T> -> Result<T, Target>
 database.get(id)
     .context(NotFound2 { item: "user" })?;
 
-// E -> Result<T, E>
-some_error.context(MyError2)
+// Source -> Target (MyError)
+let error: MyError = some_error.context(MyError2);
 ```
 
-**Note:** Helper struct fields are generic with `Into` trait bounds, so you don't need to call `.into()` manually. For expensive conversions, use `.with_context()` instead:
+When returning a converted error value from a function returning `Result`, use
+`Err(error)` or `Err(some_error.context(MyError2))`.
+
+**Note:** Helper struct fields are generic with `Into` trait bounds, so you don't need to call `.into()` manually. For expensive conversions, use `.with_context()` instead.
+
+It returns the same `Context::TargetWrapper` as `.context()`. The closure runs
+only for `Err`, `None`, or a directly supplied error value.
 
 ```rust
 // Lazy evaluation - only converts on error

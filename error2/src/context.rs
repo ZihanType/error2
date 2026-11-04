@@ -5,15 +5,16 @@ use crate::{Error2, Location, transform::SourceToTarget};
 /// Type conversion for errors, `Option`, and `Result`.
 ///
 /// The `Context` trait provides `.context()` and `.with_context()` methods for
-/// converting between types. It performs three core transformations:
+/// converting between types. All methods return [`Context::TargetWrapper`],
+/// whose concrete type depends on the receiver:
 ///
 /// 1. `Result<T, Source> -> Result<T, Target>` - Convert error types
-/// 2. `Option<T> -> Result<T, E>` - Convert `None` to an error
-/// 3. `E -> Result<T, E>` - Convert an error directly to `Result`
+/// 2. `Option<T> -> Result<T, Target>` - Convert `None` to an error
+/// 3. `Source -> Target` - Convert an error directly to the target error type
 ///
 /// # Converting Result Error Types
 ///
-/// Convert from one error type to another:
+/// For `Result<T, Source>`, [`Context::TargetWrapper`] is `Result<T, Target>`:
 ///
 /// ```
 /// use std::io;
@@ -40,7 +41,7 @@ use crate::{Error2, Location, transform::SourceToTarget};
 ///
 /// # Converting Option to Result
 ///
-/// Convert `Option<T>` to `Result<T, E>`:
+/// For `Option<T>`, [`Context::TargetWrapper`] is `Result<T, Target>`:
 ///
 /// ```
 /// use std::collections::HashMap;
@@ -58,7 +59,7 @@ use crate::{Error2, Location, transform::SourceToTarget};
 /// let mut map = HashMap::new();
 /// map.insert("name", "Alice");
 ///
-/// // Option<&str> -> Result<&str, NotFound>
+/// // Option<&&str> -> Result<&&str, NotFound>
 /// let name = map.get("name").context(NotFound2 { key: "name" })?;
 ///
 /// assert_eq!(*name, "Alice");
@@ -66,9 +67,10 @@ use crate::{Error2, Location, transform::SourceToTarget};
 /// # }
 /// ```
 ///
-/// # Converting Error to Result
+/// # Converting Error Values
 ///
-/// Convert an error value directly to `Result`:
+/// For an error value, [`Context::TargetWrapper`] is `Target`. To return the
+/// converted error from a function returning `Result`, wrap it in `Err(...)`:
 ///
 /// ```
 /// use std::io::{self, ErrorKind};
@@ -88,8 +90,9 @@ use crate::{Error2, Location, transform::SourceToTarget};
 ///         Ok(bytes) => bytes,
 ///         Err(ref e) if e.kind() == ErrorKind::TimedOut => return Ok(None),
 ///         Err(e) => {
-///             // io::Error -> Result<_, ReadLineError>
-///             return e.context(ReadLineError2);
+///             // io::Error -> ReadLineError
+///             let error: ReadLineError = e.context(ReadLineError2);
+///             return Err(error);
 ///         }
 ///     };
 ///     Ok(Some(bytes))
@@ -98,7 +101,9 @@ use crate::{Error2, Location, transform::SourceToTarget};
 ///
 /// # Lazy Evaluation
 ///
-/// Use `.with_context()` when creating context is expensive:
+/// Use `.with_context()` when creating context is expensive.
+/// It returns the same [`Context::TargetWrapper`] as `.context()`. The closure
+/// runs only for `Err`, `None`, or a directly supplied error value.
 ///
 /// ```
 /// # use error2::prelude::*;
@@ -116,29 +121,36 @@ use crate::{Error2, Location, transform::SourceToTarget};
 /// # Ok(value)
 /// # }
 /// ```
-pub trait Context<T, M, Source, Middle, Target, C>: Sized
+pub trait Context<M, Source, Middle, Target, C>: Sized
 where
     Source: Into<Middle>,
     C: SourceToTarget<M, Source, Middle, Target>,
 {
-    /// Converts error or `None` into `Target` error type.
+    /// The output type returned by all methods on this trait.
+    ///
+    /// For an error value (`Source`), this is `Target` itself. For
+    /// `Result<T, Source>` and `Option<T>`, this is `Result<T, Target>`,
+    /// preserving the success value and wrapping the converted error in `Err`.
+    type TargetWrapper;
+
+    /// Converts an error or `None` into `Target`.
     ///
     /// Automatically captures the caller's location for backtrace.
     #[inline]
     #[track_caller]
-    fn context(self, context: C) -> Result<T, Target> {
+    fn context(self, context: C) -> Self::TargetWrapper {
         self.context_and_location(context, Location::caller())
     }
 
     /// Converts with explicit location (rarely needed).
-    fn context_and_location(self, context: C, location: Location) -> Result<T, Target>;
+    fn context_and_location(self, context: C, location: Location) -> Self::TargetWrapper;
 
-    /// Converts using lazy evaluation for context creation.
+    /// Converts using lazy context creation.
     ///
-    /// The closure is only called if an error occurs.
+    /// The closure is called only for `Err`, `None`, or a directly supplied error value.
     #[inline]
     #[track_caller]
-    fn with_context<F>(self, f: F) -> Result<T, Target>
+    fn with_context<F>(self, f: F) -> Self::TargetWrapper
     where
         F: FnOnce() -> C,
     {
@@ -146,40 +158,46 @@ where
     }
 
     /// Lazy conversion with explicit location.
-    fn with_context_and_location<F>(self, f: F, location: Location) -> Result<T, Target>
+    ///
+    /// Evaluates the closure under the same conditions as [`Self::with_context`].
+    fn with_context_and_location<F>(self, f: F, location: Location) -> Self::TargetWrapper
     where
         F: FnOnce() -> C;
 }
 
-impl<T, M, Source, Middle, Target, C> Context<T, M, Source, Middle, Target, C> for Source
+impl<M, Source, Middle, Target, C> Context<M, Source, Middle, Target, C> for Source
 where
     Source: Error + Into<Middle>,
     Middle: Error,
     Target: Error2,
     C: SourceToTarget<M, Source, Middle, Target>,
 {
+    type TargetWrapper = Target;
+
     #[inline]
-    fn context_and_location(self, context: C, location: Location) -> Result<T, Target> {
-        Err(context.source_to_target(self, location))
+    fn context_and_location(self, context: C, location: Location) -> Self::TargetWrapper {
+        context.source_to_target(self, location)
     }
 
     #[inline]
-    fn with_context_and_location<F>(self, f: F, location: Location) -> Result<T, Target>
+    fn with_context_and_location<F>(self, f: F, location: Location) -> Self::TargetWrapper
     where
         F: FnOnce() -> C,
     {
         let context = f();
-        Err(context.source_to_target(self, location))
+        context.source_to_target(self, location)
     }
 }
 
-impl<T, M, Target, C> Context<T, M, (), (), Target, C> for Option<T>
+impl<T, M, Target, C> Context<M, (), (), Target, C> for Option<T>
 where
     Target: Error2,
     C: SourceToTarget<M, (), (), Target>,
 {
+    type TargetWrapper = Result<T, Target>;
+
     #[inline]
-    fn context_and_location(self, context: C, location: Location) -> Result<T, Target> {
+    fn context_and_location(self, context: C, location: Location) -> Self::TargetWrapper {
         match self {
             Some(t) => Ok(t),
             None => Err(context.source_to_target((), location)),
@@ -187,7 +205,7 @@ where
     }
 
     #[inline]
-    fn with_context_and_location<F>(self, f: F, location: Location) -> Result<T, Target>
+    fn with_context_and_location<F>(self, f: F, location: Location) -> Self::TargetWrapper
     where
         F: FnOnce() -> C,
     {
@@ -201,29 +219,31 @@ where
     }
 }
 
-impl<T, M, Source, Middle, Target, C> Context<T, M, Source, Middle, Target, C> for Result<T, Source>
+impl<T, M, Source, Middle, Target, C> Context<M, Source, Middle, Target, C> for Result<T, Source>
 where
     Source: Error + Into<Middle>,
     Middle: Error,
     Target: Error2,
     C: SourceToTarget<M, Source, Middle, Target>,
 {
+    type TargetWrapper = Result<T, Target>;
+
     #[inline]
-    fn context_and_location(self, context: C, location: Location) -> Result<T, Target> {
+    fn context_and_location(self, context: C, location: Location) -> Self::TargetWrapper {
         match self {
             Ok(t) => Ok(t),
-            Err(source) => source.context_and_location(context, location),
+            Err(source) => Err(source.context_and_location(context, location)),
         }
     }
 
     #[inline]
-    fn with_context_and_location<F>(self, f: F, location: Location) -> Result<T, Target>
+    fn with_context_and_location<F>(self, f: F, location: Location) -> Self::TargetWrapper
     where
         F: FnOnce() -> C,
     {
         match self {
             Ok(t) => Ok(t),
-            Err(source) => source.with_context_and_location(f, location),
+            Err(source) => Err(source.with_context_and_location(f, location)),
         }
     }
 }

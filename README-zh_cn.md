@@ -61,20 +61,30 @@ struct AppError {
 
 ### 错误转换
 
+`Context` trait 中的所有方法均返回 `Context::TargetWrapper`。其具体类型取决于接收者：
+对于 `Result<T, Source>` 和 `Option<T>`，返回 `Result<T, Target>`；
+对于 `Source` 类型的错误值，直接返回 `Target`。
+
 ```rust
 // Result<T, Source> -> Result<T, Target>
 std::fs::read_to_string("file.txt")
     .context(IoError2 { path: "file.txt" })?;
 
-// Option<T> -> Result<T, E>
+// Option<T> -> Result<T, Target>
 database.get(id)
     .context(NotFound2 { item: "user" })?;
 
-// E -> Result<T, E>
-some_error.context(MyError2)
+// Source -> Target (MyError)
+let error: MyError = some_error.context(MyError2);
 ```
 
-**注意：** 辅助结构体的字段是泛型且带有 `Into` trait 约束，所以不需要手动调用 `.into()`。对于开销较大的转换，使用 `.with_context()` 进行惰性求值：
+在返回 `Result` 的函数中返回转换后的错误值时，使用 `Err(error)`
+或 `Err(some_error.context(MyError2))`。
+
+**注意：** 辅助结构体的字段是泛型且带有 `Into` trait 约束，所以不需要手动调用 `.into()`。对于开销较大的转换，使用 `.with_context()` 进行惰性求值。
+
+它与 `.context()` 返回相同的 `Context::TargetWrapper`，闭包仅在接收者为 `Err`、
+`None` 或直接传入的错误值时执行。
 
 ```rust
 // 惰性求值 - 仅在出错时才转换
