@@ -3,7 +3,7 @@ resolver = "3"
 members = ["error2", "error2-derive"]
 
 [workspace.package]
-version = "0.13.3"
+version = "0.14.0"
 authors = ["zihan <ZihanType@proton.me>"]
 edition = "2024"
 readme = "README.md"
@@ -13,7 +13,7 @@ include = ["Cargo.toml", "src/**/*"]
 
 [workspace.dependencies]
 # self
-error2-derive = { path = "./error2-derive", version = "0.13.3", default-features = false }
+error2-derive = { path = "./error2-derive", version = "0.14.0", default-features = false }
 
 append-only-vec = { version = "0.1", default-features = false }
 futures-core = { version = "0.3", default-features = false }
