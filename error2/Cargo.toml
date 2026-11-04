@@ -1,36 +1,35 @@
 [package]
 name = "error2"
-description = "A simple error handle library for Rust"
-keywords = ["error", "library"]
 version.workspace = true
-edition.workspace = true
 authors.workspace = true
-license.workspace = true
-homepage.workspace = true
-repository.workspace = true
-include.workspace = true
+edition.workspace = true
+description = "A simple error handle library for Rust"
 readme.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords = ["error", "library"]
+include.workspace = true
 
 [dependencies]
-scc = { workspace = true }
 append-only-vec = { workspace = true }
+scc = { workspace = true }
 
 error2-derive = { workspace = true, optional = true }
-serde = { workspace = true, features = ["std", "derive"], optional = true }
-pin-project-lite = { workspace = true, optional = true }
 futures-core = { workspace = true, optional = true }
+pin-project-lite = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive", "std"], optional = true }
 
 [dev-dependencies]
-serde_json = { workspace = true, features = ["std"] }
 regex = { workspace = true, features = ["unicode"] }
+serde_json = { workspace = true, features = ["std"] }
 
 [features]
 default = ["derive"]
 derive = ["dep:error2-derive"]
-serde = ["dep:serde"]
 future = ["dep:pin-project-lite"]
-stream = ["dep:pin-project-lite", "dep:futures-core"]
 runtime-check = ["error2-derive?/runtime-check"]
+serde = ["dep:serde"]
+stream = ["dep:futures-core", "dep:pin-project-lite"]
 
 [lints]
 workspace = true

@@ -1,37 +1,39 @@
 [package]
 name = "error2-derive"
-description = "A simple error handle library for Rust"
-keywords = ["error", "library"]
 version.workspace = true
-edition.workspace = true
 authors.workspace = true
-license.workspace = true
-homepage.workspace = true
-repository.workspace = true
-include.workspace = true
+edition.workspace = true
+description = "A simple error handle library for Rust"
 readme.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords = ["error", "library"]
+include.workspace = true
 
 [lib]
 proc-macro = true
 
 [dependencies]
+heck = { workspace = true }
 proc-macro2 = { workspace = true }
 quote = { workspace = true }
-syn = { workspace = true, features = [
+syn = {
+  workspace = true,
+  features = [
+    "clone-impls",
     "derive",
     "parsing",
-    "proc-macro",
     "printing",
-    "clone-impls",
-] }
-heck = { workspace = true }
-
-[features]
-runtime-check = []
+    "proc-macro",
+  ]
+}
 
 [dev-dependencies]
 # cannot contain `workspace = true` to avoid circular dependencies.
 error2 = { path = "../error2", default-features = false, features = ["derive"] }
+
+[features]
+runtime-check = []
 
 [lints]
 workspace = true
