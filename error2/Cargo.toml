@@ -1,7 +1,6 @@
 [package]
 name = "error2"
 version.workspace = true
-authors.workspace = true
 edition.workspace = true
 description = "A simple error handle library for Rust"
 readme.workspace = true

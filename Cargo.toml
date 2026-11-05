@@ -4,7 +4,6 @@ members = ["error2", "error2-derive"]
 
 [workspace.package]
 version = "0.14.0"
-authors = ["zihan <ZihanType@proton.me>"]
 edition = "2024"
 readme = "README.md"
 repository = "https://github.com/ZihanType/error2"
